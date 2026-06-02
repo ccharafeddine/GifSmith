@@ -16,6 +16,8 @@ import {
   setCrop,
   setBoomerang,
   playing,
+  videoEl,
+  speed,
 } from "../state";
 import { formatTimecode } from "../format";
 import {
@@ -50,6 +52,13 @@ export default function VideoPlayer() {
     setCropEnabled(false);
     setCrop(null);
     setBoomerang(false);
+  });
+
+  // Keep the preview's forward playback rate in sync with the export speed.
+  createEffect(() => {
+    const v = videoEl();
+    const s = speed();
+    if (v) v.playbackRate = s;
   });
 
   const selectionLength = () => Math.max(0, outPoint() - inPoint());

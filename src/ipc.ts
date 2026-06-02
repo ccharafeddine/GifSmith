@@ -30,6 +30,7 @@ export interface ExportParams {
   srcWidth: number;
   srcHeight: number;
   crop: Crop | null;
+  speed: number;
   boomerang: boolean;
 }
 

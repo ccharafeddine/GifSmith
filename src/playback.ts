@@ -7,6 +7,7 @@ import {
   setOutPoint,
   setCurrentTime,
   boomerang,
+  speed,
   playing,
   setPlaying,
 } from "./state";
@@ -64,7 +65,7 @@ function reverseSeek() {
   const v = videoEl();
   if (!v || !reversing) return;
   const elapsed = (performance.now() - reverseStartWall) / 1000;
-  const target = reverseStartTime - elapsed; // 1x reverse
+  const target = reverseStartTime - elapsed * speed(); // match the chosen speed
   if (target <= inPoint()) {
     reversing = false;
     v.currentTime = inPoint();

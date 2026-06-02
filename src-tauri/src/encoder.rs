@@ -54,6 +54,8 @@ pub struct ExportParams {
     pub src_height: u32,
     /// Optional crop, applied before scaling.
     pub crop: Option<Crop>,
+    /// Playback speed multiplier (e.g. 0.5 = half, 2.0 = double).
+    pub speed: f64,
     /// Play the clip forward then reversed (buffers all frames in memory).
     pub boomerang: bool,
 }
@@ -97,14 +99,18 @@ pub fn export_gif(
     };
     let frame_bytes = out_w as usize * out_h as usize * 4;
     let duration = (params.end_secs - params.start_secs).max(0.0);
-    // crop (if any) must come before scale.
-    let vf = match params.crop {
-        Some(c) if c.w > 0 && c.h > 0 => format!(
-            "fps={},crop={}:{}:{}:{},scale={out_w}:{out_h}:flags=lanczos",
-            params.fps, c.w, c.h, c.x, c.y
-        ),
-        _ => format!("fps={},scale={out_w}:{out_h}:flags=lanczos", params.fps),
+    let speed = if params.speed > 0.0 { params.speed } else { 1.0 };
+    let pts_factor = 1.0 / speed;
+    // Filter order: retime (setpts) -> resample (fps) -> crop -> scale. crop
+    // must precede scale; setpts must precede fps.
+    let crop_part = match params.crop {
+        Some(c) if c.w > 0 && c.h > 0 => format!(",crop={}:{}:{}:{}", c.w, c.h, c.x, c.y),
+        _ => String::new(),
     };
+    let vf = format!(
+        "setpts={pts_factor:.6}*PTS,fps={}{crop_part},scale={out_w}:{out_h}:flags=lanczos",
+        params.fps
+    );
 
     // -ss before -i = fast (keyframe) seek; good enough for the MVP. -t bounds
     // the output to the selection length.
@@ -158,8 +164,10 @@ pub fn export_gif(
         Ok(())
     });
 
-    // Estimated frame count for progress reporting.
-    let total_frames = (duration * f64::from(params.fps)).round().max(1.0) as usize;
+    // Estimated frame count for progress reporting (output runs at duration/speed).
+    let total_frames = ((duration / speed) * f64::from(params.fps))
+        .round()
+        .max(1.0) as usize;
     let mut last_pct: i32 = -1;
     on_progress(0.0);
 

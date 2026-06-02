@@ -41,6 +41,9 @@ export const [width, setWidth] = createSignal(480);
 /** gifski quality, 1-100. */
 export const [quality, setQuality] = createSignal(90);
 
+/** Output playback speed multiplier (0.5x - 2x). */
+export const [speed, setSpeed] = createSignal(1);
+
 // --- Preview ---
 
 /** Temp path of the GIF awaiting preview, or null when no modal is open. */

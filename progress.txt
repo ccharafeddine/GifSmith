@@ -303,6 +303,18 @@ Remaining polish/todos:
       Export btn = .primary.export (gradient), Save = .primary (solid accent).
     * PRESERVED EXACTLY: .timeline .tl-handle/.tl-selection/.tl-playhead shapes,
       gold color, behavior (only strip backdrop tokenized to near-black).
+  - Logo tweak 2026-06-02 (user): re-added the iOS trim-handle frame around the
+    wordmark (gold handles + rails, tokens) and CENTERED the header. Keeps the
+    Space Grotesk two-tone + gradient "Gif". (Supersedes the no-box wordmark.)
+    .gitattributes: woff2/png/ico/icns marked binary.
+  - Speed feature 2026-06-02 (user): export speed 0.5x-2x.
+    * encoder: ExportParams.speed; vf prepends setpts=(1/speed)*PTS before fps;
+      total_frames = (duration/speed)*fps for progress.
+    * state.speed signal (default 1, persists across files); ExportPanel Speed
+      slider 0.5-2.0 step 0.25, "N.NNx" readout; passed in ExportParams.
+    * Preview honors speed: VideoPlayer effect sets video.playbackRate = speed;
+      boomerang reverse scales by speed too.
+  - VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm build.
   - NEXT (graphics, not yet done): app icon (.ico/.icns) via `tauri icon`;
     favicon; optional flourishes.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).

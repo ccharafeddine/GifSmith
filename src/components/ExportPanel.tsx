@@ -12,6 +12,8 @@ import {
   setWidth,
   quality,
   setQuality,
+  speed,
+  setSpeed,
   setPreviewPath,
   setPreviewVersion,
   cropEnabled,
@@ -104,6 +106,7 @@ export default function ExportPanel() {
         srcWidth: m.width,
         srcHeight: m.height,
         crop: cropPayload(),
+        speed: speed(),
         boomerang: boomerang(),
       });
       setPreviewVersion((v) => v + 1);
@@ -187,6 +190,20 @@ export default function ExportPanel() {
           onInput={(e) => setQuality(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">{quality()}</span>
+      </div>
+
+      <div class="setting">
+        <label for="speed">Speed</label>
+        <input
+          id="speed"
+          type="range"
+          min={0.5}
+          max={2}
+          step={0.25}
+          value={speed()}
+          onInput={(e) => setSpeed(e.currentTarget.valueAsNumber)}
+        />
+        <span class="setting-value">{speed().toFixed(2)}x</span>
       </div>
 
       <button
