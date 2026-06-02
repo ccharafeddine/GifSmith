@@ -60,3 +60,6 @@ export const [cropEnabled, setCropEnabled] = createSignal(false);
 
 /** Crop region in source pixels, or null for the full frame. */
 export const [crop, setCrop] = createSignal<CropRect | null>(null);
+
+/** Play the clip forward then reversed. */
+export const [bounce, setBounce] = createSignal(false);

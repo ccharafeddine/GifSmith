@@ -93,11 +93,22 @@
 }
 
 .crop-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.6rem;
   font-size: 0.9rem;
+}
+
+.bounce-note {
+  margin: -0.3rem 0 0.6rem;
+  color: #6e6e73;
+  font-size: 0.8rem;
+}
+
+.bounce-note.warn {
+  color: #c0392b;
+  font-weight: 600;
 }
 
 .controls {

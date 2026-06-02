@@ -54,6 +54,8 @@ pub struct ExportParams {
     pub src_height: u32,
     /// Optional crop, applied before scaling.
     pub crop: Option<Crop>,
+    /// Play the clip forward then reversed (buffers all frames in memory).
+    pub bounce: bool,
 }
 
 /// Round down to the nearest even number, clamped to a minimum of 2. FFmpeg's
@@ -161,28 +163,75 @@ pub fn export_gif(
     let mut last_pct: i32 = -1;
     on_progress(0.0);
 
-    let mut buf = vec![0u8; frame_bytes];
     let mut idx = 0usize;
-    loop {
-        let n = read_full(&mut stdout, &mut buf)?;
-        if n != frame_bytes {
-            break; // clean EOF (0) or a partial trailing frame
-        }
-        let pixels: Vec<RGBA8> = buf
-            .chunks_exact(4)
-            .map(|c| RGBA8::new(c[0], c[1], c[2], c[3]))
-            .collect();
-        let img = ImgVec::new(pixels, out_w as usize, out_h as usize);
-        let pts = idx as f64 / f64::from(params.fps);
-        collector.add_frame_rgba(idx, img, pts)?;
-        idx += 1;
+    if params.bounce {
+        // Buffer every frame, then feed forward + reversed, dropping the two
+        // seam frames that would otherwise duplicate at the turn-arounds.
+        let mut frames: Vec<ImgVec<RGBA8>> = Vec::new();
+        let mut buf = vec![0u8; frame_bytes];
+        loop {
+            let n = read_full(&mut stdout, &mut buf)?;
+            if n != frame_bytes {
+                break;
+            }
+            let pixels: Vec<RGBA8> = buf
+                .chunks_exact(4)
+                .map(|c| RGBA8::new(c[0], c[1], c[2], c[3]))
+                .collect();
+            frames.push(ImgVec::new(pixels, out_w as usize, out_h as usize));
 
-        // Throttle progress emissions to whole-percent changes.
-        let frac = (idx as f64 / total_frames as f64).min(1.0);
-        let pct = (frac * 100.0) as i32;
-        if pct != last_pct {
-            last_pct = pct;
-            on_progress(frac);
+            // Buffering is the first half of the progress bar.
+            let frac = (frames.len() as f64 / total_frames as f64).min(1.0) * 0.5;
+            let pct = (frac * 100.0) as i32;
+            if pct != last_pct {
+                last_pct = pct;
+                on_progress(frac);
+            }
+        }
+
+        let n = frames.len();
+        // Output order: 0,1,..,n-1, then n-2,n-3,..,1.
+        let mut order: Vec<usize> = (0..n).collect();
+        if n >= 2 {
+            order.extend((1..=n - 2).rev());
+        }
+        let total_out = order.len().max(1);
+        for &i in &order {
+            let pts = idx as f64 / f64::from(params.fps);
+            collector.add_frame_rgba(idx, frames[i].clone(), pts)?;
+            idx += 1;
+
+            // Feeding/encoding is the second half of the progress bar.
+            let frac = 0.5 + (idx as f64 / total_out as f64).min(1.0) * 0.5;
+            let pct = (frac * 100.0) as i32;
+            if pct != last_pct {
+                last_pct = pct;
+                on_progress(frac);
+            }
+        }
+    } else {
+        let mut buf = vec![0u8; frame_bytes];
+        loop {
+            let n = read_full(&mut stdout, &mut buf)?;
+            if n != frame_bytes {
+                break; // clean EOF (0) or a partial trailing frame
+            }
+            let pixels: Vec<RGBA8> = buf
+                .chunks_exact(4)
+                .map(|c| RGBA8::new(c[0], c[1], c[2], c[3]))
+                .collect();
+            let img = ImgVec::new(pixels, out_w as usize, out_h as usize);
+            let pts = idx as f64 / f64::from(params.fps);
+            collector.add_frame_rgba(idx, img, pts)?;
+            idx += 1;
+
+            // Throttle progress emissions to whole-percent changes.
+            let frac = (idx as f64 / total_frames as f64).min(1.0);
+            let pct = (frac * 100.0) as i32;
+            if pct != last_pct {
+                last_pct = pct;
+                on_progress(frac);
+            }
         }
     }
     drop(collector); // signal end of stream so the writer can finish

@@ -18,7 +18,16 @@ import {
   setCropEnabled,
   crop,
   setCrop,
+  bounce,
+  setBounce,
 } from "../state";
+
+const RAM_WARN_BYTES = 2 * 1024 ** 3; // 2 GB
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.round(bytes / 1024 ** 2)} MB`;
+}
 
 export default function ExportPanel() {
   const [exporting, setExporting] = createSignal(false);
@@ -39,6 +48,17 @@ export default function ExportPanel() {
     if (d.w === 0) return 0;
     const h = Math.round((d.h * width()) / d.w);
     return h - (h % 2);
+  };
+
+  // Estimated peak RAM for a bounce: all output frames buffered at once.
+  const bounceRamBytes = () => {
+    const ow = Math.floor(width() / 2) * 2;
+    const oh = outHeight();
+    const frames = Math.max(
+      1,
+      Math.round((outPoint() - inPoint()) * fps()),
+    );
+    return frames * ow * oh * 4;
   };
 
   function toggleCrop(on: boolean) {
@@ -84,6 +104,7 @@ export default function ExportPanel() {
         srcWidth: m.width,
         srcHeight: m.height,
         crop: cropPayload(),
+        bounce: bounce(),
       });
       setPreviewVersion((v) => v + 1);
       setPreviewPath(tempPath);
@@ -105,6 +126,24 @@ export default function ExportPanel() {
         />
         Crop
       </label>
+
+      <label class="crop-toggle">
+        <input
+          type="checkbox"
+          checked={bounce()}
+          onChange={(e) => setBounce(e.currentTarget.checked)}
+        />
+        Bounce
+      </label>
+      <Show when={bounce()}>
+        <p
+          class="bounce-note"
+          classList={{ warn: bounceRamBytes() > RAM_WARN_BYTES }}
+        >
+          Buffers ~{formatBytes(bounceRamBytes())} in RAM
+          {bounceRamBytes() > RAM_WARN_BYTES ? " (over 2 GB)" : ""}
+        </p>
+      </Show>
 
       <div class="setting">
         <label for="fps">FPS</label>

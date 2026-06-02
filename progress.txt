@@ -222,9 +222,24 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - TO TEST: toggle Crop, drag/resize the rect, export, confirm the GIF is
     cropped to that region and scaled to the chosen width.
 
+[Step 13] Bounce loop — 2026-06-02
+  - encoder: ExportParams.bounce: bool. When set, buffer all frames then feed
+    order 0..n-1 then n-2..1 (drops the two duplicate seam frames). Progress
+    split: buffering 0->0.5, feeding/encoding 0.5->1.0. Non-bounce path still
+    streams (low memory). Frames cloned per-feed (gifski add_frame takes owned).
+  - ipc/state: bounce signal (reset on new source).
+  - ExportPanel: Bounce checkbox; when on, shows "Buffers ~X in RAM", turns red
+    + "(over 2 GB)" past RAM_WARN_BYTES. Estimate = frames * outW * outH * 4.
+  - VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm run build.
+  - TO TEST: enable Bounce, export a short clip, confirm GIF plays forward then
+    backward seamlessly (no stutter at the ends). Check RAM note + 2GB warning.
+
+NOTE: Step 12 (crop) not yet runtime-confirmed by user (jumped to 13). Worth a
+crop export test too.
+
 == NEXT ==
 
-[Step 13] Bounce loop: forward+reversed frames, RAM pre-flight warning >2GB.
+[Step 14] Drag-and-drop: accept first dropped file if ext in allowlist.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

@@ -14,6 +14,7 @@ import {
   setViewEnd,
   setCropEnabled,
   setCrop,
+  setBounce,
 } from "../state";
 import { formatTimecode } from "../format";
 import { togglePlayback } from "../playback";
@@ -45,6 +46,7 @@ export default function VideoPlayer() {
     setViewEnd(dur);
     setCropEnabled(false);
     setCrop(null);
+    setBounce(false);
   });
 
   function onTimeUpdate(t: number) {
