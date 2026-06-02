@@ -12,6 +12,7 @@ import {
   setViewStart,
   viewEnd,
   setViewEnd,
+  filmstripSrc,
 } from "../state";
 import { formatTimecode } from "../format";
 import { MIN_SELECTION } from "../constants";
@@ -120,6 +121,10 @@ export default function Timeline() {
     currentTime() >= viewStart() && currentTime() <= viewEnd();
   const zoomed = () => viewSpan() < duration() - 1e-6;
 
+  // The filmstrip spans the whole clip; scale/shift it to fill the view window.
+  const stripWidth = () => (duration() > 0 ? (duration() / viewSpan()) * 100 : 100);
+  const stripLeft = () => (duration() > 0 ? -(viewStart() / viewSpan()) * 100 : 0);
+
   return (
     <div class="timeline-wrap">
       <div class="timeline">
@@ -134,6 +139,14 @@ export default function Timeline() {
             "--ph": `${pct(currentTime())}%`,
           }}
         >
+          <Show when={filmstripSrc()}>
+            <img
+              class="tl-filmstrip"
+              src={filmstripSrc() ?? ""}
+              alt=""
+              style={{ left: `${stripLeft()}%`, width: `${stripWidth()}%` }}
+            />
+          </Show>
           <div class="tl-dim tl-dim-left" />
           <div class="tl-dim tl-dim-right" />
           <div class="tl-selection" />

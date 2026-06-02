@@ -44,6 +44,14 @@ export function downloadVideo(url: string): Promise<string> {
   return invoke<string>("download_video", { url });
 }
 
+/** Build a timeline thumbnail strip; resolves to the temp PNG path. */
+export function generateFilmstrip(
+  path: string,
+  durationSecs: number,
+): Promise<string> {
+  return invoke<string>("generate_filmstrip", { path, durationSecs });
+}
+
 /** Encode the selected slice to a temp GIF; resolves to its path for preview. */
 export function exportPreview(params: ExportParams): Promise<string> {
   return invoke<string>("export_preview", { params });

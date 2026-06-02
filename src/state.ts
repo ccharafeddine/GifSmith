@@ -21,6 +21,9 @@ export const [outPoint, setOutPoint] = createSignal(0);
 /** The live <video> element, shared so the timeline can seek it. */
 export const [videoEl, setVideoEl] = createSignal<HTMLVideoElement>();
 
+/** Timeline thumbnail strip (asset URL), or null until generated. */
+export const [filmstripSrc, setFilmstripSrc] = createSignal<string | null>(null);
+
 /** Whether the transport is active (forward playback or boomerang reverse). */
 export const [playing, setPlaying] = createSignal(false);
 

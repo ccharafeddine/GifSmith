@@ -2,8 +2,9 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { probeVideo, downloadVideo } from "../ipc";
-import { setFilePath, setMeta } from "../state";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { probeVideo, downloadVideo, generateFilmstrip } from "../ipc";
+import { setFilePath, setMeta, setFilmstripSrc } from "../state";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
 const VIDEO_EXTENSIONS = ["mp4", "mov", "mkv", "webm", "avi", "m4v"];
@@ -31,8 +32,14 @@ export default function DropZone() {
     setError(null);
     setFilePath(path);
     setMeta(null);
+    setFilmstripSrc(null);
     try {
-      setMeta(await probeVideo(path));
+      const m = await probeVideo(path);
+      setMeta(m);
+      // Build the timeline thumbnail strip in the background (non-blocking).
+      generateFilmstrip(path, m.duration_secs)
+        .then((p) => setFilmstripSrc(`${convertFileSrc(p)}?v=${Date.now()}`))
+        .catch(() => setFilmstripSrc(null));
     } catch (e) {
       setError(String(e));
       setFilePath(null);

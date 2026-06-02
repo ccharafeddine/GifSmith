@@ -368,6 +368,16 @@ input {
   height: 100%;
 }
 
+/* Thumbnail strip behind the dim/selection; left/width set inline per zoom. */
+.tl-filmstrip {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
 .tl-dim {
   position: absolute;
   top: 0;

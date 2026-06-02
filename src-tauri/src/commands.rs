@@ -20,9 +20,15 @@ fn download_dir() -> PathBuf {
     std::env::temp_dir().join("gifsmith-dl")
 }
 
+/// Temp path of the timeline filmstrip image.
+fn filmstrip_path() -> PathBuf {
+    std::env::temp_dir().join("gifsmith-filmstrip.png")
+}
+
 /// Best-effort removal of all temp files GifSmith may have written. Call on exit.
 pub fn cleanup_temp() {
     let _ = std::fs::remove_file(preview_path());
+    let _ = std::fs::remove_file(filmstrip_path());
     let _ = std::fs::remove_dir_all(download_dir());
 }
 
@@ -128,6 +134,53 @@ fn parse_download_percent(line: &str) -> Option<f64> {
         .parse::<f64>()
         .ok()
         .map(|p| (p / 100.0).clamp(0.0, 1.0))
+}
+
+/// Build a horizontal thumbnail strip for the timeline and return its temp path.
+/// Samples `COUNT` frames evenly across the clip and tiles them into one PNG.
+///
+/// # Errors
+/// Returns a user-facing message if ffmpeg can't be located or run.
+#[tauri::command]
+pub async fn generate_filmstrip(
+    app: AppHandle,
+    path: String,
+    duration_secs: f64,
+) -> Result<String, String> {
+    const COUNT: u32 = 30;
+    const HEIGHT: u32 = 64;
+    let dur = if duration_secs > 0.05 { duration_secs } else { 1.0 };
+    let fps = format!("{:.6}", f64::from(COUNT) / dur);
+    let vf = format!("fps={fps},scale=-2:{HEIGHT},tile={COUNT}x1");
+    let temp = filmstrip_path();
+    let temp_str = temp.to_string_lossy().into_owned();
+
+    let output = app
+        .shell()
+        .sidecar("ffmpeg")
+        .map_err(|e| format!("could not locate ffmpeg: {e}"))?
+        .args([
+            "-y",
+            "-v",
+            "error",
+            "-an",
+            "-i",
+            &path,
+            "-vf",
+            &vf,
+            "-frames:v",
+            "1",
+            &temp_str,
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("ffmpeg failed to start: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("could not build filmstrip: {}", stderr.trim()));
+    }
+    Ok(temp_str)
 }
 
 /// Download a video from a URL with the bundled `yt-dlp` sidecar into the OS
