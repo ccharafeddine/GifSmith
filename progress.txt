@@ -288,7 +288,9 @@ Remaining polish/todos:
   - Custom graphics / style pass (user wants later).
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.
-  - Consider: app-close cleanup of temp preview file (deferred from Step 10).
+  - DONE 2026-06-02: app-close temp cleanup. lib.rs uses .build().run() and on
+    RunEvent::Exit calls commands::cleanup_temp() (removes gifsmith-preview.gif +
+    gifsmith-dl/). Temp paths centralized as preview_path()/download_dir().
   - Consider: state.ts is ~15 signals; a store refactor if it grows.
 
 [URL import] (user chose Option 1: yt-dlp, 2026-06-02)

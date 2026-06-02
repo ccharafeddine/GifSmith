@@ -15,6 +15,12 @@ pub fn run() {
             commands::save_preview,
             commands::discard_preview
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            // Delete the preview GIF and any URL download when the app exits.
+            if let tauri::RunEvent::Exit = event {
+                commands::cleanup_temp();
+            }
+        });
 }

@@ -10,6 +10,22 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
+/// Temp path of the preview GIF.
+fn preview_path() -> PathBuf {
+    std::env::temp_dir().join("gifsmith-preview.gif")
+}
+
+/// Temp dir for URL downloads.
+fn download_dir() -> PathBuf {
+    std::env::temp_dir().join("gifsmith-dl")
+}
+
+/// Best-effort removal of all temp files GifSmith may have written. Call on exit.
+pub fn cleanup_temp() {
+    let _ = std::fs::remove_file(preview_path());
+    let _ = std::fs::remove_dir_all(download_dir());
+}
+
 /// Probe a local video file with the bundled `ffprobe` sidecar and return its
 /// normalized metadata.
 ///
@@ -57,7 +73,7 @@ pub async fn probe_video(app: AppHandle, path: String) -> Result<VideoMeta, Stri
 #[tauri::command]
 pub async fn export_preview(app: AppHandle, params: ExportParams) -> Result<String, String> {
     let ffmpeg = ffmpeg_path().map_err(|e| format!("could not locate ffmpeg: {e}"))?;
-    let temp = std::env::temp_dir().join("gifsmith-preview.gif");
+    let temp = preview_path();
     let out = temp.clone();
     // Encoding is blocking and CPU-bound; keep it off the async runtime. Frame
     // progress is emitted to the frontend as "export-progress" (0.0-1.0).
@@ -122,7 +138,7 @@ fn parse_download_percent(line: &str) -> Option<f64> {
 /// download fails, or no file is produced.
 #[tauri::command]
 pub async fn download_video(app: AppHandle, url: String) -> Result<String, String> {
-    let dir = std::env::temp_dir().join("gifsmith-dl");
+    let dir = download_dir();
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
     let template = dir.join("source.%(ext)s");
