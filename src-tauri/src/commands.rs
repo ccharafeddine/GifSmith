@@ -152,7 +152,10 @@ pub async fn generate_filmstrip(
     const HEIGHT: u32 = 144;
     let dur = if duration_secs > 0.05 { duration_secs } else { 1.0 };
     let fps = format!("{:.6}", f64::from(COUNT) / dur);
-    let vf = format!("fps={fps},scale=-2:{HEIGHT},tile={COUNT}x1");
+    // Center-crop each frame to a narrower aspect before tiling so the
+    // thumbnails aren't squished when the strip stretches across the timeline.
+    let vf =
+        format!("fps={fps},crop=min(iw\\,ih*0.7):ih,scale=-2:{HEIGHT},tile={COUNT}x1");
     let temp = filmstrip_path();
     let temp_str = temp.to_string_lossy().into_owned();
 

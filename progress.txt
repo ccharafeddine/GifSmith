@@ -348,6 +348,19 @@ Remaining polish/todos:
       .player block (video+timeline+controls) is sized to the video via
       --aspect moved to the section, so it enlarges to fit a maximized window
       and the timeline lines up under the preview.
+  - Thumbnail squish + no-scroll layout 2026-06-02 (user):
+    * Thumbnails: ffmpeg now center-crops each frame to a narrower aspect
+      (crop=min(iw,ih*0.7):ih) before tile, so they're not squished when the
+      strip stretches. Kept count 24. (0.7 is tunable.)
+    * Layout refactor (markup + CSS only, no logic): .container is now a 100vh
+      flex column (no page scroll). Top bar = Logo + compact DropZone loader.
+      Two-column editor: .editor-main (meta + VideoPlayer) | .editor-side
+      (ExportPanel) sidebar (300px, panel bg). .player width bounded by
+      available height: max-width calc((100vh - 300px)*aspect) so video+timeline
+      fit without scrolling. Export button full-width; settings shrunk for the
+      narrow column. Empty state when no video.
+    * TUNABLES: the 300px height-overhead, 300px sidebar width, 0.7 crop aspect.
+    * VERIFIED: cargo clippy -D warnings, npm build.
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

@@ -16,26 +16,72 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ---- Layout ----------------------------------------------------------- */
+/* ---- Layout: full-height app, no page scroll ------------------------- */
 
 .container {
   max-width: 1280px;
+  height: 100vh;
   margin: 0 auto;
-  padding: var(--s5);
-}
-
-.app-header {
-  margin-bottom: var(--s5);
+  padding: var(--s4);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  gap: var(--s4);
 }
 
-.tagline {
-  margin: var(--s3) 0 0;
-  color: var(--fg-2);
-  font-size: var(--fs-label);
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-3);
+}
+
+/* Two columns: video + timeline on the left, export settings on the right. */
+.editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--s5);
+}
+
+.editor-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.editor-side {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  padding: var(--s4);
+}
+
+/* Source loader (top bar) */
+.loader {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.loader.drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--r-control);
 }
 
 /* ---- Wordmark: Space Grotesk, two-tone, framed by the trim selection --- */
@@ -163,45 +209,26 @@ input {
 
 /* ---- Source loader ---------------------------------------------------- */
 
-.dropzone-wrap {
-  margin: var(--s5) 0;
-}
-
-.dropzone {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  padding: var(--s3);
-  border: 1px dashed var(--border);
-  border-radius: var(--r-panel);
-}
-
-.dropzone.drag-over {
-  border-color: var(--accent);
-  border-style: solid;
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-}
-
-.dropzone-hint {
-  color: var(--fg-3);
-  font-size: var(--fs-label);
-}
-
 .url-row {
   display: flex;
+  flex: 1;
+  min-width: 220px;
   gap: var(--s2);
-  margin-top: var(--s2);
-  padding: 0 var(--s3);
 }
 
 .url-input {
   flex: 1;
+  min-width: 0;
   font: inherit;
   padding: var(--s2) var(--s3);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   background: var(--bg-control);
   color: var(--fg);
+}
+
+.loader-progress {
+  flex-basis: 100%;
 }
 
 .url-input::placeholder {
@@ -215,31 +242,35 @@ input {
 
 /* ---- File info -------------------------------------------------------- */
 
-.file-info {
-  margin-top: var(--s4);
-}
-
 .filename {
   font-weight: 600;
-  word-break: break-all;
-  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-body);
 }
 
 .meta-line {
-  margin: var(--s1) 0 0;
+  margin: 0;
   color: var(--fg-2);
   font-family: var(--font-mono);
   font-size: var(--fs-num);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---- Player + stage --------------------------------------------------- */
 
 /* The video + timeline + controls sit in one block sized to the video, so the
-   timeline always lines up under the preview. Grows with the window. */
+   timeline lines up under the preview. Width is bounded by the available
+   height (leaving room for the rest) so the page never scrolls. */
 .player {
-  margin: var(--s4) auto 0;
-  max-width: calc(62vh * (var(--aspect)));
+  width: 100%;
+  max-width: calc((100vh - 300px) * (var(--aspect)));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
 }
 
 /* Stage is sized to the exact source aspect ratio (no letterboxing), capped
@@ -455,7 +486,12 @@ input {
 /* ---- Export panel ----------------------------------------------------- */
 
 .export-panel {
-  margin-top: var(--s5);
+  margin-top: 0;
+}
+
+.export-panel > button {
+  width: 100%;
+  margin-top: var(--s3);
 }
 
 .crop-toggle {
@@ -471,8 +507,9 @@ input {
 
 .aspect-row {
   display: flex;
-  gap: var(--s4);
-  margin: 0 0 var(--s3) var(--s5);
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin: 0 0 var(--s3) var(--s4);
 }
 
 .aspect-row .crop-toggle {
@@ -499,19 +536,20 @@ input {
 }
 
 .setting label {
-  width: 4.5rem;
+  width: 3.5rem;
   color: var(--fg-2);
   font-size: var(--fs-label);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
 .setting input[type="range"] {
   flex: 1;
+  min-width: 0;
 }
 
 .setting-value {
-  width: 6.5rem;
+  width: 4.5rem;
   text-align: right;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

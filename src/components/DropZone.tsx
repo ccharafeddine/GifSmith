@@ -114,13 +114,10 @@ export default function DropZone() {
   const busy = () => loading() || downloading();
 
   return (
-    <section class="dropzone-wrap">
-      <div class="dropzone" classList={{ "drag-over": dragOver() }}>
-        <button type="button" onClick={pick} disabled={busy()}>
-          {loading() ? "Reading video..." : "Open video"}
-        </button>
-        <span class="dropzone-hint">or drop a video here</span>
-      </div>
+    <div class="loader" classList={{ "drag-over": dragOver() }}>
+      <button type="button" onClick={pick} disabled={busy()}>
+        {loading() ? "Reading..." : "Open video"}
+      </button>
 
       <form class="url-row" onSubmit={loadFromUrl}>
         <input
@@ -137,7 +134,7 @@ export default function DropZone() {
       </form>
 
       <Show when={downloading()}>
-        <div class="progress-row">
+        <div class="progress-row loader-progress">
           <div
             class="progress"
             style={{ "--p": `${Math.round(dlProgress() * 100)}%` }}
@@ -150,6 +147,6 @@ export default function DropZone() {
       <Show when={error()}>
         <p class="error">{error()}</p>
       </Show>
-    </section>
+    </div>
   );
 }

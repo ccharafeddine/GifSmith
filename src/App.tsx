@@ -77,26 +77,35 @@ function App() {
 
   return (
     <main class="container">
-      <header class="app-header">
+      <header class="topbar">
         <Logo />
-        <p class="tagline">Turn a slice of video into a high-quality GIF.</p>
+        <DropZone />
       </header>
-      <DropZone />
 
-      <Show when={meta()}>
+      <Show
+        when={meta()}
+        fallback={
+          <div class="empty-state">
+            Open a video, drop one in, or paste a link to start.
+          </div>
+        }
+      >
         {(m) => (
-          <>
-            <section class="file-info">
-              <p class="filename">{basename(filePath() ?? "")}</p>
+          <div class="editor">
+            <div class="editor-main">
               <p class="meta-line">
+                <span class="filename">{basename(filePath() ?? "")}</span>
+                {"  "}
                 {formatTimecode(m().duration_secs)} &middot; {m().width}&times;
                 {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
-                &middot; {m().codec} &middot; {m().container}
+                &middot; {m().codec}
               </p>
-            </section>
-            <VideoPlayer />
-            <ExportPanel />
-          </>
+              <VideoPlayer />
+            </div>
+            <aside class="editor-side">
+              <ExportPanel />
+            </aside>
+          </div>
         )}
       </Show>
       <PreviewModal />
