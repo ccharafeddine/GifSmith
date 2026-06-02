@@ -99,9 +99,33 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - TO TEST in the live dev window: drag handles, watch selection + dim, press
     Play to confirm it loops between IN and OUT.
 
+[Step 7] Export pipeline MVP — 2026-06-01
+  - KEY FINDING: tauri-plugin-shell inserts \n between stdout chunks
+    (plugins-workspace #3090), which corrupts binary. So the encoder spawns
+    ffmpeg via std::process::Command (NOT the shell plugin) to read raw RGBA.
+  - ffmpeg path: resolved as current_exe().parent()/ffmpeg(.exe). Tauri copies
+    sidecars next to the dev binary (confirmed target/debug/ffmpeg.exe) and next
+    to the app binary when bundled, so this works in both.
+  - src/encoder.rs: ffmpeg `-ss {start} -i in -t {dur} -vf fps,scale=W:H:lanczos
+    -f rawvideo -pix_fmt rgba pipe:1`. Computes even W and aspect-derived even H
+    so frame byte size is exact (avoids scale=-1 rounding). Reads frames,
+    feeds gifski Collector; Writer encodes on another thread; stderr drained on
+    a 3rd thread to avoid pipe deadlock. gifski 1.34, default-features=false
+    (no gifsicle C dep). Settings default + Repeat::Infinite.
+  - commands.rs: export_gif command runs encoder in spawn_blocking.
+    capabilities: added dialog:allow-save.
+  - Frontend: ipc.exportGif + ExportParams; ExportPanel.tsx (Export GIF button,
+    save dialog, exporting/status/error states); fixed MVP 15fps / 480px.
+  - VERIFIED: cargo build, clippy -D warnings, cargo test (5/5, incl even()),
+    npm run build. Frame math + threading compile clean.
+  - RUNTIME TO TEST: pick selection -> Export GIF -> save -> open the .gif.
+  - KNOWN RISK: videos with rotation metadata (portrait phone clips) may have
+    ffprobe stored dims != decoded dims, desyncing frame size. Test a normal
+    landscape clip first; handle rotation later if needed.
+
 == NEXT ==
 
-[Step 7] Export pipeline MVP: export_gif (trim only, 15fps, 480px) + Export btn.
+[Step 8] ExportPanel sliders: FPS (5-30), width (240-1080), quality (1-100).
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

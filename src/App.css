@@ -143,6 +143,16 @@
   pointer-events: none;
 }
 
+.export-panel {
+  margin-top: 1.25rem;
+}
+
+.status {
+  color: #1a7f37;
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }

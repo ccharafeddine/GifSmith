@@ -1,6 +1,10 @@
 //! Tauri command handlers. Each returns `Result<T, String>` where the string
 //! is a user-facing error message.
 
+use std::io;
+use std::path::PathBuf;
+
+use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
@@ -41,4 +45,30 @@ pub async fn probe_video(app: AppHandle, path: String) -> Result<VideoMeta, Stri
 
     let json = String::from_utf8_lossy(&output.stdout);
     parse_ffprobe_json(&json).map_err(|e| format!("could not read video metadata: {e}"))
+}
+
+/// Encode the selected slice of the source video to a GIF at `output_path`.
+///
+/// # Errors
+/// Returns a user-facing message if ffmpeg can't be located or run, or if
+/// encoding fails.
+#[tauri::command]
+pub async fn export_gif(params: ExportParams) -> Result<(), String> {
+    let ffmpeg = ffmpeg_path().map_err(|e| format!("could not locate ffmpeg: {e}"))?;
+    // Encoding is blocking and CPU-bound; keep it off the async runtime.
+    tauri::async_runtime::spawn_blocking(move || run_export(&ffmpeg, &params))
+        .await
+        .map_err(|e| format!("export task failed to run: {e}"))?
+        .map_err(|e| e.to_string())
+}
+
+/// Resolve the bundled `ffmpeg` sidecar. Tauri places it next to the app binary
+/// when bundled, and next to the dev binary in `target/` during development.
+fn ffmpeg_path() -> io::Result<PathBuf> {
+    let exe = std::env::current_exe()?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "current exe has no parent dir"))?;
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    Ok(dir.join(name))
 }

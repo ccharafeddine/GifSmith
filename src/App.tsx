@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
+import ExportPanel from "./components/ExportPanel";
 import { filePath, meta } from "./state";
 import { formatTimecode } from "./format";
 import "./App.css";
@@ -28,6 +29,7 @@ function App() {
               </p>
             </section>
             <VideoPlayer />
+            <ExportPanel />
           </>
         )}
       </Show>
