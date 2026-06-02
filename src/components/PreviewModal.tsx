@@ -66,7 +66,12 @@ export default function PreviewModal() {
             <p class="error">{error()}</p>
           </Show>
           <div class="modal-actions">
-            <button type="button" onClick={onSave} disabled={busy()}>
+            <button
+              type="button"
+              class="primary"
+              onClick={onSave}
+              disabled={busy()}
+            >
               Save
             </button>
             <button type="button" onClick={onReexport} disabled={busy()}>

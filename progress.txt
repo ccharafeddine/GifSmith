@@ -245,9 +245,29 @@ crop export test too.
   - VERIFIED: npm run build (TS ok, 26 modules). Frontend-only, HMR'd.
   - TO TEST: drag a video file onto the window -> loads; drag a .txt -> error.
 
+[Step 15] Theming — 2026-06-02
+  - App.css rewritten as a token system (--bg/--bg-elev/--fg/--fg-muted/--accent/
+    --border/--danger/--success/--trim/--radius/--space), light defaults +
+    @media (prefers-color-scheme: dark) overrides. color-scheme: light dark.
+  - System font stack (-apple-system,"Segoe UI",system-ui). Removed scaffold
+    cruft (.logo/.row/#greet-input/Vite link colors, centered layout).
+    Container is now a 760px left-aligned column.
+  - Buttons: neutral elevated default + .primary (accent) on Export + Save.
+    accent-color on inputs themes sliders/checkboxes. Timeline stays a dark
+    strip in both themes (media-control convention).
+  - Window title -> "GifSmith" (index.html + tauri.conf.json), default size
+    900x720.
+  - VERIFIED: npm run build. Needs visual check in light AND dark (toggle OS
+    appearance). Mac check deferred (no Mac here).
+
 == NEXT ==
 
-[Step 15] Theming: light/dark CSS custom properties (deferred look pass).
+[Step 16] Release workflow (tauri-action on tag), incl. macOS LGPL ffmpeg
+compile (see project_macos_ffmpeg_lgpl memory).
+[Step 17] README + screenshots.
+
+RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
+(reverse-render fix), drag-and-drop, preview modal save/discard, theming visual.
 [Boomerang preview] (user request, 2026-06-02)
   - The Bounce checkbox now also drives the EDITOR preview: at OUT it reverses
     instead of looping to IN. Reverse is simulated (HTML video has no reverse)

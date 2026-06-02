@@ -189,7 +189,12 @@ export default function ExportPanel() {
         <span class="setting-value">{quality()}</span>
       </div>
 
-      <button type="button" onClick={doExport} disabled={exporting()}>
+      <button
+        type="button"
+        class="primary"
+        onClick={doExport}
+        disabled={exporting()}
+      >
         {exporting() ? "Exporting..." : "Export GIF"}
       </button>
       <Show when={exporting()}>

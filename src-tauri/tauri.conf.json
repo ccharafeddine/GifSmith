@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "gifsmith",
-        "width": 800,
-        "height": 600
+        "title": "GifSmith",
+        "width": 900,
+        "height": 720
       }
     ],
     "security": {
