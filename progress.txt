@@ -248,9 +248,19 @@ crop export test too.
 == NEXT ==
 
 [Step 15] Theming: light/dark CSS custom properties (deferred look pass).
-OPEN REQUEST: user wants "boomerang" preview (forward then backward) in the
-editor, not just loop-to-start. Bounce export already does fwd+rev; question is
-whether to also bounce the live <video> preview (reverse playback is non-trivial).
+[Boomerang preview] (user request, 2026-06-02)
+  - The Bounce checkbox now also drives the EDITOR preview: at OUT it reverses
+    instead of looping to IN. Reverse is simulated (HTML video has no reverse)
+    by stepping currentTime back via requestAnimationFrame at 1x.
+  - Centralized all transport in src/playback.ts: playPlayback/pausePlayback/
+    togglePlayback/onPlaybackTime/onPlaybackEnded/resetPlayback/stepFrame.
+    `playing` moved to shared state (stays true through the reverse pass).
+    VideoPlayer is now a thin view: ref->setVideoEl, timeupdate->onPlaybackTime,
+    ended->onPlaybackEnded, reset effect->resetPlayback.
+  - Reverse seeking can be janky on high-res footage (backward decode cost);
+    acceptable for preview, export is exact.
+  - VERIFIED: npm run build (TS ok). HMR'd live.
+  - TO TEST: enable Bounce, Play -> editor goes forward then backward, repeat.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

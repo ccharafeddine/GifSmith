@@ -1,4 +1,4 @@
-import { createEffect, createSignal } from "solid-js";
+import { createEffect } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   filePath,
@@ -15,30 +15,33 @@ import {
   setCropEnabled,
   setCrop,
   setBounce,
+  playing,
 } from "../state";
 import { formatTimecode } from "../format";
-import { togglePlayback } from "../playback";
+import {
+  togglePlayback,
+  onPlaybackTime,
+  onPlaybackEnded,
+  resetPlayback,
+} from "../playback";
 import Timeline from "./Timeline";
 import CropOverlay from "./CropOverlay";
 
 /**
  * Plays the loaded source video via the asset protocol. Play/pause toggle plus
- * an iOS-style trim Timeline; playback loops between the IN and OUT points.
+ * an iOS-style trim Timeline. Loop/boomerang logic lives in ../playback.
  */
 export default function VideoPlayer() {
-  let videoEl: HTMLVideoElement | undefined;
-  const [playing, setPlaying] = createSignal(false);
-
   const src = () => {
     const p = filePath();
     return p ? convertFileSrc(p) : "";
   };
 
-  // New source: reset transport, trim, and zoom to the whole clip.
+  // New source: reset transport, trim, zoom, crop, and bounce to defaults.
   createEffect(() => {
     const m = meta();
     const dur = m ? m.duration_secs : 0;
-    setPlaying(false);
+    resetPlayback();
     setCurrentTime(0);
     setInPoint(0);
     setOutPoint(dur);
@@ -48,21 +51,6 @@ export default function VideoPlayer() {
     setCrop(null);
     setBounce(false);
   });
-
-  function onTimeUpdate(t: number) {
-    setCurrentTime(t);
-    // Loop within the selection while playing.
-    if (videoEl && !videoEl.paused && t >= outPoint()) {
-      videoEl.currentTime = inPoint();
-    }
-  }
-
-  function onEnded() {
-    // Reached the real end (OUT == duration): restart the loop.
-    if (!videoEl) return;
-    videoEl.currentTime = inPoint();
-    void videoEl.play();
-  }
 
   const selectionLength = () => Math.max(0, outPoint() - inPoint());
 
@@ -75,15 +63,10 @@ export default function VideoPlayer() {
     <section class="player">
       <div class="stage" style={{ "--aspect": aspect() }}>
         <video
-          ref={(el) => {
-            videoEl = el;
-            setVideoEl(el);
-          }}
+          ref={(el) => setVideoEl(el)}
           src={src()}
-          onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={onEnded}
+          onTimeUpdate={(e) => onPlaybackTime(e.currentTarget.currentTime)}
+          onEnded={onPlaybackEnded}
         />
         <CropOverlay />
       </div>
