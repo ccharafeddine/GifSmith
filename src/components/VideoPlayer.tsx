@@ -1,70 +1,95 @@
 import { createEffect, createSignal } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { filePath } from "../state";
+import {
+  filePath,
+  meta,
+  currentTime,
+  setCurrentTime,
+  inPoint,
+  setInPoint,
+  outPoint,
+  setOutPoint,
+  setVideoEl,
+} from "../state";
 import { formatTimecode } from "../format";
+import Timeline from "./Timeline";
 
 /**
- * Plays the loaded source video via the asset protocol, with a custom
- * play/pause toggle and a seekbar bound to currentTime. No trim handles yet
- * (Step 6). The native <video> controls are intentionally hidden.
+ * Plays the loaded source video via the asset protocol. Play/pause toggle plus
+ * an iOS-style trim Timeline; playback loops between the IN and OUT points.
  */
 export default function VideoPlayer() {
   let videoEl: HTMLVideoElement | undefined;
   const [playing, setPlaying] = createSignal(false);
-  const [currentTime, setCurrentTime] = createSignal(0);
-  const [duration, setDuration] = createSignal(0);
 
   const src = () => {
     const p = filePath();
     return p ? convertFileSrc(p) : "";
   };
 
-  // Reset transport state whenever the source changes.
+  // New source: reset transport and reset the trim to the whole clip.
   createEffect(() => {
-    filePath();
-    setCurrentTime(0);
-    setDuration(0);
+    const m = meta();
     setPlaying(false);
+    setCurrentTime(0);
+    setInPoint(0);
+    setOutPoint(m ? m.duration_secs : 0);
   });
 
   function togglePlay() {
     if (!videoEl) return;
     if (videoEl.paused) {
+      // Always start inside the selection.
+      if (videoEl.currentTime < inPoint() || videoEl.currentTime >= outPoint()) {
+        videoEl.currentTime = inPoint();
+      }
       void videoEl.play();
     } else {
       videoEl.pause();
     }
   }
 
+  function onTimeUpdate(t: number) {
+    setCurrentTime(t);
+    // Loop within the selection while playing.
+    if (videoEl && !videoEl.paused && t >= outPoint()) {
+      videoEl.currentTime = inPoint();
+    }
+  }
+
+  function onEnded() {
+    // Reached the real end (OUT == duration): restart the loop.
+    if (!videoEl) return;
+    videoEl.currentTime = inPoint();
+    void videoEl.play();
+  }
+
+  const selectionLength = () => Math.max(0, outPoint() - inPoint());
+
   return (
     <section class="player">
       <video
-        ref={videoEl}
+        ref={(el) => {
+          videoEl = el;
+          setVideoEl(el);
+        }}
         src={src()}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
+        onEnded={onEnded}
       />
+      <Timeline />
       <div class="controls">
         <button type="button" onClick={togglePlay}>
           {playing() ? "Pause" : "Play"}
         </button>
-        <input
-          type="range"
-          min={0}
-          max={duration() || 0}
-          step="any"
-          value={currentTime()}
-          onInput={(e) => {
-            if (!videoEl) return;
-            const t = Number(e.currentTarget.value);
-            videoEl.currentTime = t;
-            setCurrentTime(t);
-          }}
-        />
         <span class="time">
-          {formatTimecode(currentTime())} / {formatTimecode(duration())}
+          {formatTimecode(currentTime())} /{" "}
+          {formatTimecode(meta()?.duration_secs ?? 0)}
+        </span>
+        <span class="selection-len">
+          Selection {selectionLength().toFixed(1)}s
         </span>
       </div>
     </section>

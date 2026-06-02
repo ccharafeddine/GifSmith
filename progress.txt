@@ -79,13 +79,29 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - src/format.ts: shared formatTimecode (used by App + player).
   - App.tsx renders VideoPlayer below file-info when meta is loaded.
   - VERIFIED: npm run build (TS ok), cargo build (assetProtocol config valid).
-  - RUNTIME RISK to check: assetProtocol scope ["**"] matching Windows paths.
-    If playback fails with "asset protocol not configured to allow the path",
-    switch to runtime allow_file scoping. Confirm via `npm run tauri dev`.
+  - RUNTIME VERIFIED 2026-06-01: `npm run tauri dev` ran clean. File picker,
+    ffprobe metadata, asset-protocol playback, play/pause, seekbar all work on
+    Windows. assetProtocol scope ["**"] matches Windows paths fine. So Steps
+    3, 4, 5 are confirmed end to end, not just statically.
+
+[Step 6] Timeline trim handles — 2026-06-01
+  - state.ts: added shared signals currentTime, inPoint, outPoint, videoEl.
+  - src/components/Timeline.tsx: iOS-style trim strip. Draggable IN/OUT handles
+    (yellow), dimmed outside selection, white playhead. Pointer-events drag via
+    window listeners; drag handles = trim, drag elsewhere = scrub. Constrains
+    in < out by MIN_SELECTION (0.1s). Geometry passed as CSS custom props
+    (--in/--out/--ph) so styling stays in App.css (only dynamic % inline).
+  - VideoPlayer.tsx: removed plain range seekbar; renders <Timeline/>. Shares
+    videoEl + currentTime via state. Loops playback between IN/OUT (timeupdate
+    seeks back to IN at OUT; onEnded restarts). Play starts inside selection.
+    Resets trim to full clip on new source. Shows "Selection N.Ns".
+  - VERIFIED: npm run build (TS ok, incl. custom-property style typing).
+  - TO TEST in the live dev window: drag handles, watch selection + dim, press
+    Play to confirm it loops between IN and OUT.
 
 == NEXT ==
 
-[Step 6] Timeline trim handles (IN/OUT), constrain in<out, loop playback.
+[Step 7] Export pipeline MVP: export_gif (trim only, 15fps, 480px) + Export btn.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

@@ -50,6 +50,99 @@
   white-space: nowrap;
 }
 
+.selection-len {
+  color: #6e6e73;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* iOS-style trim strip. --in / --out / --ph are percentages set inline. */
+.timeline {
+  position: relative;
+  height: 48px;
+  margin-top: 0.5rem;
+  border-radius: 8px;
+  background: #1c1c1e;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.tl-dim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.tl-dim-left {
+  left: 0;
+  width: var(--in);
+}
+
+.tl-dim-right {
+  left: var(--out);
+  right: 0;
+}
+
+.tl-selection {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--in);
+  width: calc(var(--out) - var(--in));
+  box-sizing: border-box;
+  border-top: 3px solid #ffd60a;
+  border-bottom: 3px solid #ffd60a;
+  pointer-events: none;
+}
+
+.tl-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  background: #ffd60a;
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.tl-handle::after {
+  content: "";
+  width: 2px;
+  height: 40%;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 1px;
+}
+
+.tl-handle-in {
+  left: var(--in);
+  border-radius: 4px 0 0 4px;
+}
+
+.tl-handle-out {
+  left: var(--out);
+  transform: translateX(-100%);
+  border-radius: 0 4px 4px 0;
+}
+
+.tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--ph);
+  width: 2px;
+  background: #fff;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
