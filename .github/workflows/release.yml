@@ -1,0 +1,62 @@
+name: release
+
+# Build installers and publish a draft GitHub Release when a v* tag is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-14 # Apple Silicon
+            target: aarch64-apple-darwin
+          - platform: macos-13 # Intel
+            target: x86_64-apple-darwin
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # FFmpeg/ffprobe sidecars must exist before the Tauri bundle step.
+      - name: Fetch FFmpeg sidecars (Windows, LGPL static)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh
+
+      - name: Build FFmpeg sidecars (macOS, LGPL from source)
+        if: runner.os == 'macOS'
+        run: |
+          brew install nasm
+          bash scripts/build-ffmpeg-macos.sh
+
+      - name: Build and publish draft release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "GifSmith ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}

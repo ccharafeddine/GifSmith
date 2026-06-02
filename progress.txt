@@ -260,11 +260,25 @@ crop export test too.
   - VERIFIED: npm run build. Needs visual check in light AND dark (toggle OS
     appearance). Mac check deferred (no Mac here).
 
+[Step 16] Release workflow — 2026-06-02
+  - .github/workflows/release.yml: on push tag v*, matrix of macos-14 (arm64),
+    macos-13 (intel), windows-latest. Per-OS: Windows runs fetch-ffmpeg.sh;
+    macOS runs build-ffmpeg-macos.sh (brew install nasm first). Then
+    tauri-action@v0 with releaseDraft:true, args --target <triple>, builds and
+    uploads .dmg/.msi/.nsis to a draft GitHub Release. permissions contents:write.
+  - scripts/build-ffmpeg-macos.sh: compiles LGPL ffmpeg+ffprobe 7.1 from source
+    (--disable-gpl/--disable-nonfree), names them with the host triple. Honors
+    the macOS LGPL decision. [[project-macos-ffmpeg-lgpl]]
+  - VALIDATED: bash -n on both scripts, python yaml parse of release.yml, no tabs.
+  - NOT yet run: needs a real `git tag v0.1.0 && git push --tags` to exercise CI
+    (user triggers; outward-facing). macOS code signing not configured (unsigned
+    .dmg -> Gatekeeper; README workaround in Step 17).
+  - WATCH: macos-13 (Intel) runner may be deprecated by GitHub eventually; swap
+    to a universal build or newer intel runner if it disappears.
+
 == NEXT ==
 
-[Step 16] Release workflow (tauri-action on tag), incl. macOS LGPL ffmpeg
-compile (see project_macos_ffmpeg_lgpl memory).
-[Step 17] README + screenshots.
+[Step 17] README + screenshots (install, Gatekeeper workaround, FFmpeg LGPL note).
 
 RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
 (reverse-render fix), drag-and-drop, preview modal save/discard, theming visual.
