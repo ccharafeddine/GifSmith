@@ -15,13 +15,10 @@ import {
 } from "../state";
 import { formatTimecode } from "../format";
 
-// Absolute smallest selectable clip, in seconds (a safety floor).
-const MIN_SELECTION = 0.1;
-// Handle width in px (matches .tl-handle in App.css).
-const HANDLE_PX = 14;
-// Keep IN and OUT at least two handle widths apart on screen so they never
-// overlap and both stay grabbable. Converted to seconds per the current zoom.
-const MIN_GAP_PX = 2 * HANDLE_PX;
+// Smallest selectable clip, in seconds. Handles point outward (see App.css) so
+// they never overlap, which lets this be a small usability floor rather than a
+// grabbability constraint.
+const MIN_SELECTION = 1;
 // Most-zoomed-in state: the whole strip shows this many seconds.
 const MIN_VIEW_SPAN = 60;
 // Wheel zoom step.
@@ -58,16 +55,6 @@ export default function Timeline() {
     return viewStart() + frac * viewSpan();
   }
 
-  // Minimum IN/OUT gap in seconds that keeps the handles from overlapping at
-  // the current zoom (MIN_GAP_PX on screen).
-  function minGapTime(): number {
-    const span = viewSpan();
-    if (!track || span <= 0) return MIN_SELECTION;
-    const w = track.getBoundingClientRect().width;
-    if (w <= 0) return MIN_SELECTION;
-    return Math.max(MIN_SELECTION, (MIN_GAP_PX / w) * span);
-  }
-
   function seekTo(t: number) {
     const v = videoEl();
     if (v) v.currentTime = t;
@@ -79,15 +66,11 @@ export default function Timeline() {
 
     const apply = (clientX: number) => {
       const t = timeFromClientX(clientX);
-      // Block shrinking past the on-screen gap, but if the selection is already
-      // smaller (e.g. set at a deeper zoom, then zoomed out) don't force it
-      // open: only stop it from shrinking further. Expanding is always allowed.
-      const gap = Math.min(minGapTime(), outPoint() - inPoint());
       if (kind === "in") {
-        setInPoint(clamp(t, viewStart(), outPoint() - gap));
+        setInPoint(clamp(t, viewStart(), outPoint() - MIN_SELECTION));
         if (currentTime() < inPoint()) seekTo(inPoint());
       } else if (kind === "out") {
-        setOutPoint(clamp(t, inPoint() + gap, viewEnd()));
+        setOutPoint(clamp(t, inPoint() + MIN_SELECTION, viewEnd()));
         if (currentTime() > outPoint()) seekTo(outPoint());
       } else {
         seekTo(clamp(t, inPoint(), outPoint()));
@@ -142,37 +125,39 @@ export default function Timeline() {
 
   return (
     <div class="timeline-wrap">
-      <div
-        class="timeline"
-        ref={track}
-        onPointerDown={(e) => startDrag("playhead", e)}
-        onWheel={onWheel}
-        style={{
-          "--in": `${pct(inPoint())}%`,
-          "--out": `${pct(outPoint())}%`,
-          "--ph": `${pct(currentTime())}%`,
-        }}
-      >
-        <div class="tl-dim tl-dim-left" />
-        <div class="tl-dim tl-dim-right" />
-        <div class="tl-selection" />
+      <div class="timeline">
         <div
-          class="tl-handle tl-handle-in"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            startDrag("in", e);
+          class="tl-inner"
+          ref={track}
+          onPointerDown={(e) => startDrag("playhead", e)}
+          onWheel={onWheel}
+          style={{
+            "--in": `${pct(inPoint())}%`,
+            "--out": `${pct(outPoint())}%`,
+            "--ph": `${pct(currentTime())}%`,
           }}
-        />
-        <div
-          class="tl-handle tl-handle-out"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            startDrag("out", e);
-          }}
-        />
-        <Show when={playheadVisible()}>
-          <div class="tl-playhead" />
-        </Show>
+        >
+          <div class="tl-dim tl-dim-left" />
+          <div class="tl-dim tl-dim-right" />
+          <div class="tl-selection" />
+          <div
+            class="tl-handle tl-handle-in"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              startDrag("in", e);
+            }}
+          />
+          <div
+            class="tl-handle tl-handle-out"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              startDrag("out", e);
+            }}
+          />
+          <Show when={playheadVisible()}>
+            <div class="tl-playhead" />
+          </Show>
+        </div>
       </div>
       <p class="tl-info">
         <Show when={zoomed()} fallback="Scroll over the timeline to zoom in">

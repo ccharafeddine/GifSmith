@@ -139,11 +139,12 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     floor, trim-pull on zoom-in, trim-frozen on zoom-out.
   - Possible follow-ups if needed: horizontal pan when zoomed (not built),
     keyboard nudge for frame-accurate handle moves.
-  - FIX 2026-06-02: handles got "stuck" at min length (overlapped, ~1px apart,
-    ungrabbable). Now enforce a zoom-scaled min gap (MIN_GAP_PX = 2*handle =
-    28px -> seconds via track width). effFloor = min(gap, currentSelection) so
-    a selection set at deep zoom then zoomed out won't force-open; only blocks
-    further shrinking, expansion always allowed. Zoom feels good per user.
+  - FIX 2026-06-02: handles got "stuck" at min length (overlapped, ungrabbable).
+    First fix used a zoom-scaled min gap (~2.2s min). User wanted 1s. Final fix:
+    flipped handles to point OUTWARD (iOS bracket style) so they never overlap
+    regardless of selection width; added 14px padding + a .tl-inner content
+    layer so the outward grips don't clip at the view edges. MIN_SELECTION is
+    now a flat 1s usability floor (no pixel-gap math). Zoom feels good per user.
 
 [Step 8] ExportPanel sliders — 2026-06-02
   - encoder.rs: ExportParams gained `quality: u8`; threaded into gifski

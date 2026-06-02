@@ -68,16 +68,25 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* iOS-style trim strip. --in / --out / --ph are percentages set inline. */
+/* iOS-style trim strip. --in / --out / --ph are percentages set inline.
+   Horizontal padding gives the outward-pointing handles room at the edges. */
 .timeline {
   position: relative;
   height: 48px;
+  padding: 0 14px;
   border-radius: 8px;
   background: #1c1c1e;
   overflow: hidden;
   touch-action: none;
   user-select: none;
   cursor: pointer;
+}
+
+/* Content area: 0-100% maps here; handles overflow into the padding. */
+.tl-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .tl-dim {
@@ -133,12 +142,12 @@
 
 .tl-handle-in {
   left: var(--in);
+  transform: translateX(-100%);
   border-radius: 4px 0 0 4px;
 }
 
 .tl-handle-out {
   left: var(--out);
-  transform: translateX(-100%);
   border-radius: 0 4px 4px 0;
 }
 
