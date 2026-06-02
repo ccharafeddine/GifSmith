@@ -1,4 +1,4 @@
-import { createMemo } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import {
   meta,
   currentTime,
@@ -8,33 +8,49 @@ import {
   outPoint,
   setOutPoint,
   videoEl,
+  viewStart,
+  setViewStart,
+  viewEnd,
+  setViewEnd,
 } from "../state";
+import { formatTimecode } from "../format";
 
 // Smallest selectable clip, in seconds, so IN and OUT can't collapse together.
 const MIN_SELECTION = 0.1;
+// Most-zoomed-in state: the whole strip shows this many seconds.
+const MIN_VIEW_SPAN = 60;
+// Wheel zoom step.
+const ZOOM_FACTOR = 1.2;
 
 type DragKind = "in" | "out" | "playhead";
 
+const clamp = (x: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, x));
+
 /**
- * iOS-style trim strip layered over the playback range. Drag the IN/OUT
- * handles to frame a selection (highlighted, dimmed outside); drag elsewhere
- * to scrub the playhead. Geometry is fed in via CSS custom properties so all
- * styling stays in the stylesheet.
+ * iOS-style trim strip with a zoomable view window. Drag the IN/OUT handles to
+ * frame a selection; drag elsewhere to scrub. Scroll to zoom the visible window
+ * (cursor-anchored, down to MIN_VIEW_SPAN); zooming in pulls a too-wide trim
+ * inward, zooming out leaves the trim alone. Geometry is fed in via CSS custom
+ * properties so styling stays in the stylesheet.
  */
 export default function Timeline() {
   let track: HTMLDivElement | undefined;
 
   const duration = createMemo(() => meta()?.duration_secs ?? 0);
+  const viewSpan = () => viewEnd() - viewStart();
+
+  // Position of a time within the visible window, as a clamped 0-100 percentage.
   const pct = (t: number) => {
-    const d = duration();
-    return d > 0 ? (t / d) * 100 : 0;
+    const span = viewSpan();
+    return span > 0 ? clamp(((t - viewStart()) / span) * 100, 0, 100) : 0;
   };
 
   function timeFromClientX(clientX: number): number {
     if (!track) return 0;
     const rect = track.getBoundingClientRect();
-    const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    return frac * duration();
+    const frac = clamp((clientX - rect.left) / rect.width, 0, 1);
+    return viewStart() + frac * viewSpan();
   }
 
   function seekTo(t: number) {
@@ -49,15 +65,15 @@ export default function Timeline() {
     const apply = (clientX: number) => {
       const t = timeFromClientX(clientX);
       if (kind === "in") {
-        const next = Math.min(t, outPoint() - MIN_SELECTION);
-        setInPoint(Math.max(0, next));
+        const next = clamp(t, viewStart(), outPoint() - MIN_SELECTION);
+        setInPoint(next);
         if (currentTime() < inPoint()) seekTo(inPoint());
       } else if (kind === "out") {
-        const next = Math.max(t, inPoint() + MIN_SELECTION);
-        setOutPoint(Math.min(duration(), next));
+        const next = clamp(t, inPoint() + MIN_SELECTION, viewEnd());
+        setOutPoint(next);
         if (currentTime() > outPoint()) seekTo(outPoint());
       } else {
-        seekTo(Math.min(outPoint(), Math.max(inPoint(), t)));
+        seekTo(clamp(t, inPoint(), outPoint()));
       }
     };
 
@@ -71,35 +87,81 @@ export default function Timeline() {
     apply(e.clientX);
   }
 
+  function onWheel(e: WheelEvent) {
+    const d = duration();
+    if (d <= 0) return;
+    e.preventDefault();
+
+    const minSpan = Math.min(MIN_VIEW_SPAN, d);
+    const span = viewSpan();
+    const cursorT = timeFromClientX(e.clientX);
+    const factor = e.deltaY < 0 ? 1 / ZOOM_FACTOR : ZOOM_FACTOR; // up = zoom in
+    const newSpan = clamp(span * factor, minSpan, d);
+    if (newSpan === span) return;
+
+    // Keep the time under the cursor pinned to the same pixel.
+    const frac = span > 0 ? (cursorT - viewStart()) / span : 0;
+    const newStart = clamp(cursorT - frac * newSpan, 0, d - newSpan);
+    const newEnd = newStart + newSpan;
+    setViewStart(newStart);
+    setViewEnd(newEnd);
+
+    // Couple the trim to the view: clamp handles into the window. Zoom-in pulls
+    // a too-wide selection inward; zoom-out is a no-op (handles already inside).
+    const ni = clamp(inPoint(), newStart, newEnd);
+    const no = clamp(outPoint(), newStart, newEnd);
+    if (no - ni < MIN_SELECTION) {
+      setInPoint(newStart);
+      setOutPoint(newEnd);
+    } else {
+      setInPoint(ni);
+      setOutPoint(no);
+    }
+  }
+
+  const playheadVisible = () =>
+    currentTime() >= viewStart() && currentTime() <= viewEnd();
+  const zoomed = () => viewSpan() < duration() - 1e-6;
+
   return (
-    <div
-      class="timeline"
-      ref={track}
-      onPointerDown={(e) => startDrag("playhead", e)}
-      style={{
-        "--in": `${pct(inPoint())}%`,
-        "--out": `${pct(outPoint())}%`,
-        "--ph": `${pct(currentTime())}%`,
-      }}
-    >
-      <div class="tl-dim tl-dim-left" />
-      <div class="tl-dim tl-dim-right" />
-      <div class="tl-selection" />
+    <div class="timeline-wrap">
       <div
-        class="tl-handle tl-handle-in"
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          startDrag("in", e);
+        class="timeline"
+        ref={track}
+        onPointerDown={(e) => startDrag("playhead", e)}
+        onWheel={onWheel}
+        style={{
+          "--in": `${pct(inPoint())}%`,
+          "--out": `${pct(outPoint())}%`,
+          "--ph": `${pct(currentTime())}%`,
         }}
-      />
-      <div
-        class="tl-handle tl-handle-out"
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          startDrag("out", e);
-        }}
-      />
-      <div class="tl-playhead" />
+      >
+        <div class="tl-dim tl-dim-left" />
+        <div class="tl-dim tl-dim-right" />
+        <div class="tl-selection" />
+        <div
+          class="tl-handle tl-handle-in"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            startDrag("in", e);
+          }}
+        />
+        <div
+          class="tl-handle tl-handle-out"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            startDrag("out", e);
+          }}
+        />
+        <Show when={playheadVisible()}>
+          <div class="tl-playhead" />
+        </Show>
+      </div>
+      <p class="tl-info">
+        <Show when={zoomed()} fallback="Scroll over the timeline to zoom in">
+          Showing {formatTimecode(viewSpan())} of {formatTimecode(duration())}
+        </Show>
+      </p>
     </div>
   );
 }

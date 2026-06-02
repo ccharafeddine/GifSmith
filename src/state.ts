@@ -20,3 +20,9 @@ export const [outPoint, setOutPoint] = createSignal(0);
 
 /** The live <video> element, shared so the timeline can seek it. */
 export const [videoEl, setVideoEl] = createSignal<HTMLVideoElement>();
+
+/** Start of the visible timeline window in seconds (timeline zoom). */
+export const [viewStart, setViewStart] = createSignal(0);
+
+/** End of the visible timeline window in seconds (timeline zoom). */
+export const [viewEnd, setViewEnd] = createSignal(0);

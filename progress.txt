@@ -123,9 +123,27 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     ffprobe stored dims != decoded dims, desyncing frame size. Test a normal
     landscape clip first; handle rotation later if needed.
 
+[Step 6b] Timeline zoom (UNPLANNED, user-requested) — 2026-06-02
+  - Problem: precise short selections on long videos were too fiddly.
+  - state.ts: added viewStart/viewEnd (visible window in seconds).
+  - Timeline.tsx: all geometry now maps through the view window. Mouse-wheel
+    zoom, cursor-anchored: up = zoom in (down to MIN_VIEW_SPAN 60s), down =
+    zoom out (up to full duration). After each zoom, trim handles are clamped
+    into the view -> zoom-in pulls a too-wide selection inward; zoom-out is a
+    no-op on trim. Playhead hidden when outside the view. "Showing m:ss of
+    m:ss" readout. Drag/seek now view-relative.
+  - VideoPlayer resets view to full clip on new source.
+  - VERIFIED: npm run build (TS ok). Hot-reloaded into the live dev window.
+  - TO TEST: scroll over timeline to zoom; confirm cursor-anchoring, 1-min
+    floor, trim-pull on zoom-in, trim-frozen on zoom-out.
+  - Possible follow-ups if needed: horizontal pan when zoomed (not built),
+    keyboard nudge for frame-accurate handle moves.
+
 == NEXT ==
 
 [Step 8] ExportPanel sliders: FPS (5-30), width (240-1080), quality (1-100).
+NOTE: Step 7 export still needs a runtime confirmation (user pivoted to zoom
+before confirming a .gif was produced).
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

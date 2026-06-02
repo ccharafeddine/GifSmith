@@ -10,6 +10,8 @@ import {
   outPoint,
   setOutPoint,
   setVideoEl,
+  setViewStart,
+  setViewEnd,
 } from "../state";
 import { formatTimecode } from "../format";
 import Timeline from "./Timeline";
@@ -27,13 +29,16 @@ export default function VideoPlayer() {
     return p ? convertFileSrc(p) : "";
   };
 
-  // New source: reset transport and reset the trim to the whole clip.
+  // New source: reset transport, trim, and zoom to the whole clip.
   createEffect(() => {
     const m = meta();
+    const dur = m ? m.duration_secs : 0;
     setPlaying(false);
     setCurrentTime(0);
     setInPoint(0);
-    setOutPoint(m ? m.duration_secs : 0);
+    setOutPoint(dur);
+    setViewStart(0);
+    setViewEnd(dur);
   });
 
   function togglePlay() {

@@ -57,11 +57,21 @@
   margin-left: auto;
 }
 
+.timeline-wrap {
+  margin-top: 0.5rem;
+}
+
+.tl-info {
+  margin: 0.35rem 0 0;
+  color: #6e6e73;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* iOS-style trim strip. --in / --out / --ph are percentages set inline. */
 .timeline {
   position: relative;
   height: 48px;
-  margin-top: 0.5rem;
   border-radius: 8px;
   background: #1c1c1e;
   overflow: hidden;
