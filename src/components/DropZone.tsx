@@ -1,7 +1,8 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { probeVideo } from "../ipc";
+import { listen } from "@tauri-apps/api/event";
+import { probeVideo, downloadVideo } from "../ipc";
 import { setFilePath, setMeta } from "../state";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
@@ -13,16 +14,18 @@ function hasAllowedExtension(path: string): boolean {
 }
 
 /**
- * Picker for the source video. Opens via the native dialog or a window file
- * drop, then probes the selection and stores path + metadata in shared state.
- * Handles cancel, loading, and error states.
+ * Source loader: open via the native dialog, a window file drop, or a URL
+ * (downloaded with yt-dlp). Probes the result and stores path + metadata.
  */
 export default function DropZone() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [dragOver, setDragOver] = createSignal(false);
+  const [url, setUrl] = createSignal("");
+  const [downloading, setDownloading] = createSignal(false);
+  const [dlProgress, setDlProgress] = createSignal(0);
 
-  // Probe a path and store it. Shared by the dialog and drag-and-drop.
+  // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
     setLoading(true);
     setError(null);
@@ -40,7 +43,6 @@ export default function DropZone() {
 
   async function pick() {
     setError(null);
-
     let selected: string | string[] | null;
     try {
       selected = await open({
@@ -52,11 +54,31 @@ export default function DropZone() {
       setError(String(e));
       return;
     }
-
-    // Null = user cancelled. Array is impossible with multiple:false, but the
-    // union type allows it, so narrow defensively.
-    if (typeof selected !== "string") return;
+    if (typeof selected !== "string") return; // cancelled
     await load(selected);
+  }
+
+  async function loadFromUrl(e: Event) {
+    e.preventDefault();
+    const link = url().trim();
+    if (!link || downloading()) return;
+
+    setError(null);
+    setDlProgress(0);
+    setDownloading(true);
+    const unlisten = await listen<number>("download-progress", (ev) =>
+      setDlProgress(ev.payload),
+    );
+    try {
+      const path = await downloadVideo(link);
+      await load(path);
+      setUrl("");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      unlisten();
+      setDownloading(false);
+    }
   }
 
   onMount(() => {
@@ -82,12 +104,42 @@ export default function DropZone() {
     });
   });
 
+  const busy = () => loading() || downloading();
+
   return (
-    <section class="dropzone" classList={{ "drag-over": dragOver() }}>
-      <button type="button" onClick={pick} disabled={loading()}>
-        {loading() ? "Reading video..." : "Open video"}
-      </button>
-      <span class="dropzone-hint">or drop a video here</span>
+    <section class="dropzone-wrap">
+      <div class="dropzone" classList={{ "drag-over": dragOver() }}>
+        <button type="button" onClick={pick} disabled={busy()}>
+          {loading() ? "Reading video..." : "Open video"}
+        </button>
+        <span class="dropzone-hint">or drop a video here</span>
+      </div>
+
+      <form class="url-row" onSubmit={loadFromUrl}>
+        <input
+          type="text"
+          class="url-input"
+          placeholder="or paste a video URL (YouTube, etc.)"
+          value={url()}
+          onInput={(e) => setUrl(e.currentTarget.value)}
+          disabled={busy()}
+        />
+        <button type="submit" disabled={busy() || !url().trim()}>
+          {downloading() ? "Downloading..." : "Load"}
+        </button>
+      </form>
+
+      <Show when={downloading()}>
+        <div class="progress-row">
+          <div
+            class="progress"
+            style={{ "--p": `${Math.round(dlProgress() * 100)}%` }}
+          >
+            <div class="progress-fill" />
+          </div>
+          <span class="progress-pct">{Math.round(dlProgress() * 100)}%</span>
+        </div>
+      </Show>
       <Show when={error()}>
         <p class="error">{error()}</p>
       </Show>

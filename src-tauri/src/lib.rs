@@ -10,6 +10,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::probe_video,
+            commands::download_video,
             commands::export_preview,
             commands::save_preview,
             commands::discard_preview

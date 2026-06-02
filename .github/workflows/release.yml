@@ -50,6 +50,10 @@ jobs:
           brew install nasm
           bash scripts/build-ffmpeg-macos.sh
 
+      - name: Fetch yt-dlp sidecar
+        shell: bash
+        run: bash scripts/fetch-ytdlp.sh
+
       - name: Build and publish draft release
         uses: tauri-apps/tauri-action@v0
         env:

@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 /// Probe a local video file with the bundled `ffprobe` sidecar and return its
@@ -98,6 +99,91 @@ pub fn discard_preview(temp_path: String) -> Result<(), String> {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(format!("could not delete the preview: {e}")),
+    }
+}
+
+/// Parse a yt-dlp progress line like "[download]  12.3% of ..." into 0.0-1.0.
+fn parse_download_percent(line: &str) -> Option<f64> {
+    let idx = line.find('%')?;
+    let prefix = &line[..idx];
+    let start = prefix.rfind(char::is_whitespace).map_or(0, |i| i + 1);
+    prefix[start..]
+        .trim()
+        .parse::<f64>()
+        .ok()
+        .map(|p| (p / 100.0).clamp(0.0, 1.0))
+}
+
+/// Download a video from a URL with the bundled `yt-dlp` sidecar into the OS
+/// temp dir and return its path. Emits "download-progress" events (0.0-1.0).
+///
+/// # Errors
+/// Returns a user-facing message if yt-dlp can't be located or run, the
+/// download fails, or no file is produced.
+#[tauri::command]
+pub async fn download_video(app: AppHandle, url: String) -> Result<String, String> {
+    let dir = std::env::temp_dir().join("gifsmith-dl");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
+    let template = dir.join("source.%(ext)s");
+
+    let mut args: Vec<String> = vec![
+        "--no-playlist".into(),
+        "--no-part".into(),
+        "--newline".into(),
+        "-f".into(),
+        // Prefer an H.264 mp4 the webview can play; fall back to anything.
+        "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]/bestvideo[height<=1080][ext=mp4]/best[ext=mp4]/best".into(),
+        "-o".into(),
+        template.to_string_lossy().into_owned(),
+    ];
+    // Let yt-dlp use our ffmpeg for any remux/merge it needs.
+    if let Some(dir) = ffmpeg_path().ok().and_then(|p| p.parent().map(PathBuf::from)) {
+        args.push("--ffmpeg-location".into());
+        args.push(dir.to_string_lossy().into_owned());
+    }
+    args.push(url);
+
+    let (mut rx, _child) = app
+        .shell()
+        .sidecar("yt-dlp")
+        .map_err(|e| format!("could not locate yt-dlp: {e}"))?
+        .args(args)
+        .spawn()
+        .map_err(|e| format!("yt-dlp failed to start: {e}"))?;
+
+    let mut errors = String::new();
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(bytes) => {
+                if let Some(p) = parse_download_percent(&String::from_utf8_lossy(&bytes)) {
+                    let _ = app.emit("download-progress", p);
+                }
+            }
+            CommandEvent::Stderr(bytes) => {
+                let line = String::from_utf8_lossy(&bytes);
+                if let Some(p) = parse_download_percent(&line) {
+                    let _ = app.emit("download-progress", p);
+                } else {
+                    errors.push_str(&line);
+                }
+            }
+            CommandEvent::Error(e) => errors.push_str(&e),
+            CommandEvent::Terminated(payload) if payload.code != Some(0) => {
+                return Err(format!("download failed: {}", errors.trim()));
+            }
+            _ => {}
+        }
+    }
+
+    let file = std::fs::read_dir(&dir)
+        .map_err(|e| format!("could not read download folder: {e}"))?
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .find(|p| p.is_file());
+    match file {
+        Some(p) => Ok(p.to_string_lossy().into_owned()),
+        None => Err("the download produced no file".to_string()),
     }
 }
 

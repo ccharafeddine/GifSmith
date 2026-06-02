@@ -110,14 +110,39 @@ input {
 
 /* ---- Drop zone -------------------------------------------------------- */
 
-.dropzone {
+.dropzone-wrap {
   margin: calc(var(--space) * 2) 0;
+}
+
+.dropzone {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
   border: 2px dashed transparent;
   border-radius: var(--radius);
+}
+
+.url-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.url-input {
+  flex: 1;
+  font: inherit;
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .dropzone.drag-over {

@@ -7,8 +7,8 @@ GifSmith is a standalone desktop app for Mac and Windows that converts a slice o
 ### Hard constraints
 
 - No media library, no cache, no telemetry, no ads, no accounts.
-- Source video is read in place from disk, never copied or imported into the app.
-- Encoding pipeline writes zero intermediate files. The only file written is the final `.gif` at the user's chosen path (plus an optional preview GIF in OS temp, deleted on app close).
+- Source video is read in place from disk, never copied or imported into the app. EXCEPTION (added by user request): opening a remote URL downloads it via the bundled `yt-dlp` sidecar to an OS temp file, which is then treated as the local source. This is the only feature that touches the network.
+- Encoding pipeline writes zero intermediate files. The only files written are the final `.gif` at the user's chosen path, an optional preview GIF in OS temp, and (for URL imports) the downloaded source in OS temp. All temp files should be deleted on app close.
 - Single codebase, cross-platform via Tauri.
 - MIT licensed.
 

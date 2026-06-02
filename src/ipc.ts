@@ -38,6 +38,11 @@ export function probeVideo(path: string): Promise<VideoMeta> {
   return invoke<VideoMeta>("probe_video", { path });
 }
 
+/** Download a video from a URL via yt-dlp; resolves to the temp file path. */
+export function downloadVideo(url: string): Promise<string> {
+  return invoke<string>("download_video", { url });
+}
+
 /** Encode the selected slice to a temp GIF; resolves to its path for preview. */
 export function exportPreview(params: ExportParams): Promise<string> {
   return invoke<string>("export_preview", { params });
