@@ -65,4 +65,4 @@ export const [cropEnabled, setCropEnabled] = createSignal(false);
 export const [crop, setCrop] = createSignal<CropRect | null>(null);
 
 /** Play the clip forward then reversed. */
-export const [bounce, setBounce] = createSignal(false);
+export const [boomerang, setBoomerang] = createSignal(false);

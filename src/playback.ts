@@ -6,26 +6,23 @@ import {
   outPoint,
   setOutPoint,
   setCurrentTime,
-  bounce,
+  boomerang,
   playing,
   setPlaying,
 } from "./state";
 import { MIN_SELECTION } from "./constants";
 
-// Boomerang reverse pass is simulated by stepping currentTime backwards, since
-// HTML <video> can't play in reverse. Module-level so the controller is a
-// singleton across the button, keyboard, and timeupdate callbacks.
-let rafId: number | undefined;
+// The boomerang reverse pass is simulated, since HTML <video> can't play in
+// reverse. We seek backwards one step at a time, gated on the "seeked" event so
+// each frame actually renders before we issue the next seek (setting currentTime
+// faster than seeks complete just coalesces them and the picture freezes). The
+// target is wall-clock based so it stays ~1x, dropping frames if decode is slow.
 let reversing = false;
-let reverseLast: number | undefined;
+let reverseStartWall = 0;
+let reverseStartTime = 0;
 
 function cancelReverse() {
-  if (rafId !== undefined) {
-    cancelAnimationFrame(rafId);
-    rafId = undefined;
-  }
   reversing = false;
-  reverseLast = undefined;
 }
 
 /** Stop playback entirely (forward or reverse). */
@@ -53,47 +50,46 @@ export function togglePlayback() {
   else playPlayback();
 }
 
-/** Drive the reverse half of a boomerang by seeking backwards in real time. */
 function startReverse() {
   const v = videoEl();
   if (!v) return;
   reversing = true;
-  reverseLast = undefined;
   v.pause(); // we control currentTime manually now
-  rafId = requestAnimationFrame(reverseTick);
+  reverseStartWall = performance.now();
+  reverseStartTime = v.currentTime;
+  reverseSeek();
 }
 
-function reverseTick(now: number) {
-  if (!reversing) return;
+function reverseSeek() {
   const v = videoEl();
-  if (!v) {
-    cancelReverse();
-    return;
-  }
-  if (reverseLast === undefined) reverseLast = now;
-  const dt = (now - reverseLast) / 1000;
-  reverseLast = now;
-  const t = v.currentTime - dt; // 1x reverse
-  if (t <= inPoint()) {
-    cancelReverse();
+  if (!v || !reversing) return;
+  const elapsed = (performance.now() - reverseStartWall) / 1000;
+  const target = reverseStartTime - elapsed; // 1x reverse
+  if (target <= inPoint()) {
+    reversing = false;
     v.currentTime = inPoint();
     setCurrentTime(inPoint());
     void v.play(); // loop back into forward playback
     return;
   }
-  v.currentTime = t;
-  setCurrentTime(t);
-  rafId = requestAnimationFrame(reverseTick);
+  const onSeeked = () => {
+    v.removeEventListener("seeked", onSeeked);
+    if (!reversing) return;
+    setCurrentTime(v.currentTime);
+    reverseSeek();
+  };
+  v.addEventListener("seeked", onSeeked);
+  v.currentTime = target;
 }
 
 /** Called from the <video> timeupdate. Loops or boomerangs at the OUT point. */
 export function onPlaybackTime(t: number) {
-  if (reversing) return; // rAF owns currentTime during the reverse pass
+  if (reversing) return; // the reverse pass owns currentTime
   setCurrentTime(t);
   const v = videoEl();
   if (!v || !playing()) return;
   if (t >= outPoint()) {
-    if (bounce()) {
+    if (boomerang()) {
       startReverse();
     } else {
       v.currentTime = inPoint();
@@ -105,7 +101,7 @@ export function onPlaybackTime(t: number) {
 export function onPlaybackEnded() {
   const v = videoEl();
   if (!v || !playing() || reversing) return;
-  if (bounce()) {
+  if (boomerang()) {
     startReverse();
   } else {
     v.currentTime = inPoint();

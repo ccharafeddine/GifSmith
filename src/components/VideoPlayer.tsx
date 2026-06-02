@@ -14,7 +14,7 @@ import {
   setViewEnd,
   setCropEnabled,
   setCrop,
-  setBounce,
+  setBoomerang,
   playing,
 } from "../state";
 import { formatTimecode } from "../format";
@@ -49,7 +49,7 @@ export default function VideoPlayer() {
     setViewEnd(dur);
     setCropEnabled(false);
     setCrop(null);
-    setBounce(false);
+    setBoomerang(false);
   });
 
   const selectionLength = () => Math.max(0, outPoint() - inPoint());

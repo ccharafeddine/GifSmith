@@ -30,7 +30,7 @@ export interface ExportParams {
   srcWidth: number;
   srcHeight: number;
   crop: Crop | null;
-  bounce: boolean;
+  boomerang: boolean;
 }
 
 /** Probe a local video file via the bundled ffprobe sidecar. */

@@ -55,7 +55,7 @@ pub struct ExportParams {
     /// Optional crop, applied before scaling.
     pub crop: Option<Crop>,
     /// Play the clip forward then reversed (buffers all frames in memory).
-    pub bounce: bool,
+    pub boomerang: bool,
 }
 
 /// Round down to the nearest even number, clamped to a minimum of 2. FFmpeg's
@@ -164,7 +164,7 @@ pub fn export_gif(
     on_progress(0.0);
 
     let mut idx = 0usize;
-    if params.bounce {
+    if params.boomerang {
         // Buffer every frame, then feed forward + reversed, dropping the two
         // seam frames that would otherwise duplicate at the turn-arounds.
         let mut frames: Vec<ImgVec<RGBA8>> = Vec::new();

@@ -18,8 +18,8 @@ import {
   setCropEnabled,
   crop,
   setCrop,
-  bounce,
-  setBounce,
+  boomerang,
+  setBoomerang,
 } from "../state";
 
 const RAM_WARN_BYTES = 2 * 1024 ** 3; // 2 GB
@@ -50,8 +50,8 @@ export default function ExportPanel() {
     return h - (h % 2);
   };
 
-  // Estimated peak RAM for a bounce: all output frames buffered at once.
-  const bounceRamBytes = () => {
+  // Estimated peak RAM for a boomerang: all output frames buffered at once.
+  const boomerangRamBytes = () => {
     const ow = Math.floor(width() / 2) * 2;
     const oh = outHeight();
     const frames = Math.max(
@@ -104,7 +104,7 @@ export default function ExportPanel() {
         srcWidth: m.width,
         srcHeight: m.height,
         crop: cropPayload(),
-        bounce: bounce(),
+        boomerang: boomerang(),
       });
       setPreviewVersion((v) => v + 1);
       setPreviewPath(tempPath);
@@ -130,18 +130,18 @@ export default function ExportPanel() {
       <label class="crop-toggle">
         <input
           type="checkbox"
-          checked={bounce()}
-          onChange={(e) => setBounce(e.currentTarget.checked)}
+          checked={boomerang()}
+          onChange={(e) => setBoomerang(e.currentTarget.checked)}
         />
-        Bounce
+        Boomerang
       </label>
-      <Show when={bounce()}>
+      <Show when={boomerang()}>
         <p
           class="bounce-note"
-          classList={{ warn: bounceRamBytes() > RAM_WARN_BYTES }}
+          classList={{ warn: boomerangRamBytes() > RAM_WARN_BYTES }}
         >
-          Buffers ~{formatBytes(bounceRamBytes())} in RAM
-          {bounceRamBytes() > RAM_WARN_BYTES ? " (over 2 GB)" : ""}
+          Buffers ~{formatBytes(boomerangRamBytes())} in RAM
+          {boomerangRamBytes() > RAM_WARN_BYTES ? " (over 2 GB)" : ""}
         </p>
       </Show>
 
