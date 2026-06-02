@@ -1,0 +1,5 @@
+# Shell scripts must stay LF or they break on macOS/Linux CI runners.
+*.sh text eol=lf
+
+# Normalize text files, let git detect the rest.
+* text=auto
