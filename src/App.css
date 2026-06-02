@@ -157,6 +157,30 @@
   margin-top: 1.25rem;
 }
 
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.setting label {
+  width: 4rem;
+  color: #6e6e73;
+  font-size: 0.9rem;
+}
+
+.setting input[type="range"] {
+  flex: 1;
+}
+
+.setting-value {
+  width: 6rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+
 .status {
   color: #1a7f37;
   font-size: 0.9rem;

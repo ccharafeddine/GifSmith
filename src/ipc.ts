@@ -19,6 +19,7 @@ export interface ExportParams {
   endSecs: number;
   fps: number;
   width: number;
+  quality: number;
   srcWidth: number;
   srcHeight: number;
 }

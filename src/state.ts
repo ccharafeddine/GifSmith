@@ -26,3 +26,14 @@ export const [viewStart, setViewStart] = createSignal(0);
 
 /** End of the visible timeline window in seconds (timeline zoom). */
 export const [viewEnd, setViewEnd] = createSignal(0);
+
+// --- Export settings ---
+
+/** Output frame rate (frames per second). */
+export const [fps, setFps] = createSignal(15);
+
+/** Output width in pixels (height follows source aspect). */
+export const [width, setWidth] = createSignal(480);
+
+/** gifski quality, 1-100. */
+export const [quality, setQuality] = createSignal(90);

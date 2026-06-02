@@ -40,6 +40,7 @@ pub struct ExportParams {
     pub end_secs: f64,
     pub fps: u32,
     pub width: u32,
+    pub quality: u8,
     pub src_width: u32,
     pub src_height: u32,
 }
@@ -113,6 +114,7 @@ pub fn export_gif(ffmpeg: &Path, params: &ExportParams) -> Result<(), EncodeErro
     });
 
     let settings = Settings {
+        quality: params.quality.clamp(1, 100),
         repeat: Repeat::Infinite,
         ..Settings::default()
     };

@@ -145,11 +145,20 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     a selection set at deep zoom then zoomed out won't force-open; only blocks
     further shrinking, expansion always allowed. Zoom feels good per user.
 
+[Step 8] ExportPanel sliders — 2026-06-02
+  - encoder.rs: ExportParams gained `quality: u8`; threaded into gifski
+    Settings (clamped 1-100). FPS/width already flowed through.
+  - state.ts: added fps(15)/width(480)/quality(90) signals. state is now 11
+    signals (just past the ~10 guideline; revisit a store if it keeps growing).
+  - ExportPanel.tsx: three range sliders (FPS 5-30, Width 240-1080 step 10,
+    Quality 1-100) bound to those signals; width shows derived WxH. Export
+    passes the live values.
+  - VERIFIED: cargo clippy -D warnings, cargo test, npm run build.
+  - TO TEST: move sliders, export, confirm fps/size/quality change in output.
+
 == NEXT ==
 
-[Step 8] ExportPanel sliders: FPS (5-30), width (240-1080), quality (1-100).
-  - Needs a Rust change: add `quality` to ExportParams + thread into gifski
-    Settings (currently hardcoded default). FPS/width already flow through.
+[Step 9] Progress events: encoder emits export-progress (0..1), panel shows bar.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

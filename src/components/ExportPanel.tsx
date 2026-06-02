@@ -1,16 +1,31 @@
 import { createSignal, Show } from "solid-js";
 import { save } from "@tauri-apps/plugin-dialog";
 import { exportGif } from "../ipc";
-import { filePath, meta, inPoint, outPoint } from "../state";
-
-// Fixed MVP settings (Step 7). FPS / width / quality become sliders in Step 8.
-const MVP_FPS = 15;
-const MVP_WIDTH = 480;
+import {
+  filePath,
+  meta,
+  inPoint,
+  outPoint,
+  fps,
+  setFps,
+  width,
+  setWidth,
+  quality,
+  setQuality,
+} from "../state";
 
 export default function ExportPanel() {
   const [exporting, setExporting] = createSignal(false);
   const [status, setStatus] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+
+  // Output height, derived from source aspect at the chosen width (preview).
+  const outHeight = () => {
+    const m = meta();
+    if (!m || m.width === 0) return 0;
+    const h = Math.round((m.height * width()) / m.width);
+    return h - (h % 2);
+  };
 
   async function doExport() {
     const input = filePath();
@@ -39,8 +54,9 @@ export default function ExportPanel() {
         outputPath: dest,
         startSecs: inPoint(),
         endSecs: outPoint(),
-        fps: MVP_FPS,
-        width: MVP_WIDTH,
+        fps: fps(),
+        width: width(),
+        quality: quality(),
         srcWidth: m.width,
         srcHeight: m.height,
       });
@@ -54,6 +70,50 @@ export default function ExportPanel() {
 
   return (
     <section class="export-panel">
+      <div class="setting">
+        <label for="fps">FPS</label>
+        <input
+          id="fps"
+          type="range"
+          min={5}
+          max={30}
+          step={1}
+          value={fps()}
+          onInput={(e) => setFps(e.currentTarget.valueAsNumber)}
+        />
+        <span class="setting-value">{fps()}</span>
+      </div>
+
+      <div class="setting">
+        <label for="width">Width</label>
+        <input
+          id="width"
+          type="range"
+          min={240}
+          max={1080}
+          step={10}
+          value={width()}
+          onInput={(e) => setWidth(e.currentTarget.valueAsNumber)}
+        />
+        <span class="setting-value">
+          {width()}&times;{outHeight()}
+        </span>
+      </div>
+
+      <div class="setting">
+        <label for="quality">Quality</label>
+        <input
+          id="quality"
+          type="range"
+          min={1}
+          max={100}
+          step={1}
+          value={quality()}
+          onInput={(e) => setQuality(e.currentTarget.valueAsNumber)}
+        />
+        <span class="setting-value">{quality()}</span>
+      </div>
+
       <button type="button" onClick={doExport} disabled={exporting()}>
         {exporting() ? "Exporting..." : "Export GIF"}
       </button>
