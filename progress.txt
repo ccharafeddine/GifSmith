@@ -1,0 +1,27 @@
+GifSmith — progress log
+
+Build plan reference: see CLAUDE.md "Build plan" (17 steps).
+
+== DONE ==
+
+[Step 1] Scaffold — 2026-06-01
+  - npm create tauri-app: Solid + TypeScript, Tauri 2.x, identifier com.gifsmith.app
+  - Scaffold contents lifted into repo root alongside CLAUDE.md.
+  - npm install: 78 packages, 0 vulnerabilities.
+  - cargo build (src-tauri): clean compile in ~2m39s (tauri 2.11.2).
+  - Added MIT LICENSE (hard requirement).
+  - git init + first commit + pushed to github.com/ccharafeddine/GifSmith.
+  - NOTE: verified via `cargo build` rather than opening the dev window
+    (GUI window is blocking in this environment). User can run
+    `npm run tauri dev` to see the blank window.
+
+== NEXT ==
+
+[Step 2] FFmpeg sidecars
+  - Write scripts/fetch-ffmpeg.sh (BtbN lgpl-shared for Windows, evermeet.cx for Mac).
+  - Place in src-tauri/binaries/ with {name}-{target-triple} suffix.
+  - Wire bundle.externalBin in tauri.conf.json.
+
+== ENVIRONMENT ==
+  - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
+  - Repo: https://github.com/ccharafeddine/GifSmith
