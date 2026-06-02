@@ -26,19 +26,61 @@ body {
 
 .app-header {
   margin-bottom: var(--s5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .tagline {
-  margin: var(--s2) 0 0;
+  margin: var(--s3) 0 0;
   color: var(--fg-2);
   font-size: var(--fs-label);
 }
 
-/* ---- Wordmark: Space Grotesk, two-tone weight, gradient on "Gif" ------- */
+/* ---- Wordmark: Space Grotesk, two-tone, framed by the trim selection --- */
 
 .logo {
   display: inline-flex;
   user-select: none;
+}
+
+.logo-frame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 20px;
+  border-top: 3px solid var(--trim);
+  border-bottom: 3px solid var(--trim);
+}
+
+.logo-handle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 11px;
+  background: var(--trim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-handle::after {
+  content: "";
+  width: 2px;
+  height: 45%;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 1px;
+}
+
+.logo-handle-l {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.logo-handle-r {
+  right: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 .logo-word {

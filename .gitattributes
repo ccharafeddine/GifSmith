@@ -3,3 +3,10 @@
 
 # Normalize text files, let git detect the rest.
 * text=auto
+
+# Binary assets must never get EOL normalization.
+*.woff2 binary
+*.woff binary
+*.png binary
+*.ico binary
+*.icns binary
