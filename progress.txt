@@ -276,9 +276,26 @@ crop export test too.
   - WATCH: macos-13 (Intel) runner may be deprecated by GitHub eventually; swap
     to a universal build or newer intel runner if it disappears.
 
-== NEXT ==
+[Step 17] README — 2026-06-02
+  - Rewrote README.md: features, keyboard shortcuts, install (Win SmartScreen +
+    Mac Gatekeeper right-click-Open workaround), build-from-source, FFmpeg LGPL
+    note (Win BtbN static / Mac compiled from source), MIT license note.
+  - Screenshots DEFERRED per user (placeholder comment left in README).
 
-[Step 17] README + screenshots (install, Gatekeeper workaround, FFmpeg LGPL note).
+== ALL 17 BUILD-PLAN STEPS DONE ==
+Remaining polish/todos:
+  - Add screenshots (light + dark) when ready.
+  - Custom graphics / style pass (user wants later).
+  - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
+  - Trigger release CI with a v* tag when ready.
+  - Consider: app-close cleanup of temp preview file (deferred from Step 10).
+  - Consider: state.ts is ~15 signals; a store refactor if it grows.
+
+== OPEN REQUEST (under discussion) ==
+  Pull video from a URL (YouTube / any site). CONFLICTS with hard constraints
+  ("read in place, never copied", "zero intermediate files"). Needs yt-dlp
+  sidecar (FFmpeg can't extract YouTube). Also YouTube ToS gray area. Awaiting
+  user decision on whether/how to add (see options presented).
 
 RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
 (reverse-render fix), drag-and-drop, preview modal save/discard, theming visual.
