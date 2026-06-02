@@ -237,9 +237,20 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
 NOTE: Step 12 (crop) not yet runtime-confirmed by user (jumped to 13). Worth a
 crop export test too.
 
+[Step 14] Drag-and-drop — 2026-06-02
+  - DropZone: getCurrentWebview().onDragDropEvent (onMount/onCleanup). On 'drop'
+    take paths[0], validate extension against allowlist, else error. enter/over
+    highlight the dropzone (.drag-over), leave/drop clear it. Extracted shared
+    load(path) used by both dialog pick and drop. "or drop a video here" hint.
+  - VERIFIED: npm run build (TS ok, 26 modules). Frontend-only, HMR'd.
+  - TO TEST: drag a video file onto the window -> loads; drag a .txt -> error.
+
 == NEXT ==
 
-[Step 14] Drag-and-drop: accept first dropped file if ext in allowlist.
+[Step 15] Theming: light/dark CSS custom properties (deferred look pass).
+OPEN REQUEST: user wants "boomerang" preview (forward then backward) in the
+editor, not just loop-to-start. Bounce export already does fwd+rev; question is
+whether to also bounce the live <video> preview (reverse playback is non-trivial).
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
