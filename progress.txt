@@ -285,11 +285,26 @@ crop export test too.
 == ALL 17 BUILD-PLAN STEPS DONE ==
 Remaining polish/todos:
   - Add screenshots (light + dark) when ready.
-  - [Style pass IN PROGRESS 2026-06-02] Custom GifSmith wordmark logo: Poppins
-    (rounded/friendly, user pick) self-hosted via @fontsource latin-500/600.
-    Logo.tsx = "Gif" + muted "Smith" framed by the iOS trim selection (yellow
-    handles + rails), reusing timeline look. Header + tagline. NEXT: app icon
-    (.ico/.icns) from a matching mark via `tauri icon`; favicon; more flourish.
+  - [Cyberminimalism restyle 2026-06-02] Per detailed user spec. STYLING ONLY
+    (no logic/feature/IPC/pipeline changes; no prop destructuring).
+    * src/tokens.css: single source of truth. 3 near-black bg layers
+      (base/panel/control), 3 text grays, ONE accent = trim gold (--accent ==
+      --trim), one --grad (Export btn + "Gif" only), 4px spacing scale
+      (--s1..s6), --r-control/--r-panel, type scale, font roles. Dark-only
+      (color-scheme: dark), dropped the light/dark media inversion.
+    * Fonts vendored as woff2 in src/assets/fonts (+ OFL licenses committed),
+      @font-face in src/fonts.css, npm @fontsource deps removed (incl. Poppins).
+      Space Grotesk (wordmark), Space Mono (numeric, tabular), system sans (UI).
+      Verified: no fonts.googleapis/gstatic refs in dist or src.
+    * Logo.tsx: wordmark rebuilt, no frame/box; "Gif" bold w/ gradient,
+      "Smith" 400 secondary, tight tracking. (Trim-frame decoration removed from
+      logo; the real scrubber owns the trim-handle motif now.)
+    * App.css rewritten on tokens; numeric readouts -> mono; labels uppercased;
+      Export btn = .primary.export (gradient), Save = .primary (solid accent).
+    * PRESERVED EXACTLY: .timeline .tl-handle/.tl-selection/.tl-playhead shapes,
+      gold color, behavior (only strip backdrop tokenized to near-black).
+  - NEXT (graphics, not yet done): app icon (.ico/.icns) via `tauri icon`;
+    favicon; optional flourishes.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.
   - DONE 2026-06-02: app-close temp cleanup. lib.rs uses .build().run() and on

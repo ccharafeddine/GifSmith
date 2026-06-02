@@ -1,17 +1,14 @@
 /**
- * GifSmith wordmark: the name framed by the iOS-style timeline trim selection
- * (yellow grab-handles on each side, selection rails top and bottom), reusing
- * the editor's visual language. Pure CSS so it themes with the rest of the app.
+ * GifSmith wordmark in Space Grotesk: two-tone weight (bold "Gif" with the
+ * signature gradient, lighter "Smith" in secondary text), tight tracking, no
+ * box or effects. The trim-handle motif lives on the real scrubber, not here.
  */
 export default function Logo() {
   return (
     <div class="logo" role="img" aria-label="GifSmith">
-      <span class="logo-frame">
-        <span class="logo-handle logo-handle-l" />
-        <span class="logo-word">
-          Gif<span class="logo-word-accent">Smith</span>
-        </span>
-        <span class="logo-handle logo-handle-r" />
+      <span class="logo-word">
+        <span class="logo-gif">Gif</span>
+        <span class="logo-smith">Smith</span>
       </span>
     </div>
   );

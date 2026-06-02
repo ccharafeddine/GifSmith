@@ -1,0 +1,57 @@
+/* Design tokens: the single source of truth. Imported once globally.
+   Cyberminimalism: near-black, monochrome, one gold accent (the trim handles).
+   The only color events on screen are the video frame and the trim handles. */
+
+:root {
+  color-scheme: dark;
+
+  /* Background scale: three near-black layers, dark and close together. */
+  --bg-base: #0a0a0a; /* app canvas */
+  --bg-panel: #141414; /* panels / modal */
+  --bg-control: #1e1e1e; /* raised controls */
+
+  /* Text */
+  --fg: #ededed; /* primary, near-white */
+  --fg-2: #9a9a9a; /* secondary, mid-gray */
+  --fg-3: #5e5e5e; /* tertiary, dim-gray */
+
+  /* Accent: the gold/amber of the iOS trim handles. Single accent. */
+  --accent: #ffd60a;
+  --accent-fg: #0a0a0a;
+  --trim: var(--accent); /* timeline handles read this; keep identical */
+
+  /* One signature gradient. Export GIF button fill + the "Gif" wordmark only. */
+  --grad: linear-gradient(135deg, #ffe24d 0%, #ffd60a 45%, #f2b400 100%);
+
+  /* Borders (hairline) */
+  --border: #262626;
+
+  /* Semantic */
+  --danger: #ff5d5d;
+
+  /* Spacing: 4px base grid */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+
+  /* Radii: small for controls, larger for panels */
+  --r-control: 6px;
+  --r-panel: 12px;
+
+  /* Timeline strip backdrop (near-black; handles stay gold) */
+  --timeline-bg: #0e0e0e;
+
+  /* Type scale */
+  --fs-wordmark: 2rem;
+  --fs-body: 0.95rem;
+  --fs-label: 0.75rem;
+  --fs-num: 0.85rem;
+
+  /* Font roles */
+  --font-display: "Space Grotesk", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-body: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+}

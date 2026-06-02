@@ -191,7 +191,7 @@ export default function ExportPanel() {
 
       <button
         type="button"
-        class="primary"
+        class="primary export"
         onClick={doExport}
         disabled={exporting()}
       >
