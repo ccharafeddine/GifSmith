@@ -64,12 +64,15 @@ fetch_windows() {
 
 # ---------------------------------------------------------------------------
 # macOS: x86_64-apple-darwin + aarch64-apple-darwin
-# TODO(licensing): no turnkey LGPL static macOS build exists publicly.
-# evermeet.cx is GPL (--enable-gpl --enable-libx264). Resolve before the
-# macOS release (build plan Step 16). See README "FFmpeg licensing".
+# DECISION (locked): no turnkey LGPL static macOS build exists publicly, and
+# evermeet.cx is GPL (libx264). So macOS sidecars are COMPILED FROM SOURCE
+# with --disable-gpl in CI on a macOS runner, not downloaded here. That build
+# recipe lands in .github/workflows/release.yml at build plan Step 16.
+# This local fetch script handles Windows only; on macOS the CI compile step
+# produces ffmpeg-{aarch64,x86_64}-apple-darwin before bundling.
 # ---------------------------------------------------------------------------
 fetch_macos() {
-  echo "macOS: SKIPPED — LGPL source not yet decided (see README, build plan Step 16)."
+  echo "macOS: not fetched here — sidecars are compiled LGPL from source in CI (Step 16)."
 }
 
 fetch_windows

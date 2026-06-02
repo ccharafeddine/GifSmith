@@ -27,14 +27,13 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - Binaries gitignored (/binaries/* except .gitkeep); CI must run fetch first.
   - Verified host-triple files resolve for x86_64-pc-windows-msvc (no sidecar
     error on dev build for this host). User can confirm with `npm run tauri dev`.
-  - OPEN: macOS LGPL source unresolved. evermeet.cx = GPL (libx264), violates
-    "LGPL only". No turnkey LGPL static macOS prebuilt found. fetch_macos()
-    currently skips. Decide before Step 16 (release). See question to user.
+  - macOS DECISION (locked, user chose Option 1): compile LGPL ffmpeg/ffprobe
+    from source with --disable-gpl in CI on a macOS runner. Recipe lands in
+    release.yml at Step 16. fetch-ffmpeg.sh stays Windows-only.
 
 == NEXT ==
 
-[Step 2-mac] Resolve macOS LGPL FFmpeg source (awaiting user decision).
-[Step 3] probe_video command (ffprobe JSON -> VideoMeta).
+[Step 3] probe_video command (ffprobe JSON -> VideoMeta) + temp UI button.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
