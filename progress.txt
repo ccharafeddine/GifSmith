@@ -31,9 +31,33 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     from source with --disable-gpl in CI on a macOS runner. Recipe lands in
     release.yml at Step 16. fetch-ffmpeg.sh stays Windows-only.
 
+[Step 3] probe_video command (ffprobe JSON -> VideoMeta) — 2026-06-01
+  - tauri-plugin-shell + thiserror added to Cargo.toml.
+  - src/probe.rs: VideoMeta struct + parse_ffprobe_json (pure, unit-tested).
+    Picks first video stream, r_frame_rate w/ avg fallback, format duration w/
+    stream fallback, first token of format_name as container. 4 tests, all pass.
+  - src/commands.rs: probe_video async command, runs ffprobe sidecar via
+    ShellExt, returns Result<VideoMeta,String>. Uses -v error (not -v quiet,
+    minor deviation) so failures surface on stderr; stdout stays pure JSON.
+  - lib.rs: registers tauri_plugin_shell::init(), generate_handler![probe_video].
+  - capabilities/default.json: shell:allow-execute scope for ffprobe + ffmpeg
+    sidecars (args:true). Frontend ipc.ts + temp Probe button in App.tsx
+    (hardcoded TEMP_VIDEO_PATH, replaced by file picker in Step 4).
+  - VERIFIED: cargo test (4/4 pass), npm run build (TS type-checks, vite OK).
+  - NOT verified: cargo clippy -- could not finish, DISK FULL (os error 112).
+    Code compiles (cargo test proves it); clippy needs a rerun after freeing
+    space. Also unverified at runtime (needs `npm run tauri dev` + a real video).
+
+== BLOCKER ==
+  C: drive 100% full (21M free / 466G). Blocks further Rust compiles and the
+  eventual `tauri build`. User must free space (suggest 15-20GB+). Our project
+  footprint: target 5.2G, binaries 332M. `cargo clean` reclaims target if
+  needed (forces a full rebuild). Rerun clippy once space is freed.
+
 == NEXT ==
 
-[Step 3] probe_video command (ffprobe JSON -> VideoMeta) + temp UI button.
+[Step 3-verify] Rerun `cargo clippy --all-targets -- -D warnings` after disk freed.
+[Step 4] DropZone + file picker (@tauri-apps/plugin-dialog).
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
