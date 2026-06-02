@@ -196,12 +196,27 @@
   word-break: break-all;
 }
 
-.progress {
-  height: 6px;
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin-top: 0.6rem;
+}
+
+.progress {
+  flex: 1;
+  height: 6px;
   background: #e5e5ea;
   border-radius: 3px;
   overflow: hidden;
+}
+
+.progress-pct {
+  width: 3rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: #6e6e73;
 }
 
 .progress-fill {

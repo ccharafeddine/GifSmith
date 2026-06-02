@@ -166,8 +166,10 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - ExportPanel: listens for export-progress while exporting, renders a fill bar
     (.progress / .progress-fill, width via --p custom prop). unlisten in finally.
     Covered by existing core:default (includes core:event:default).
-  - VERIFIED: cargo clippy -D warnings, npm run build.
-  - TO TEST: export a longer clip, watch the bar fill 0->100%.
+  - VERIFIED: cargo clippy -D warnings, npm run build. Bar animates (user
+    confirmed). Added a % label beside the bar per user request.
+  - Also per user: MIN_VIEW_SPAN 60 -> 30s (zoom can go tighter now).
+  - Theming/look changes deferred to Step 15 per user preference.
 
 == NEXT ==
 

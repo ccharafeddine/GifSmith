@@ -125,8 +125,14 @@ export default function ExportPanel() {
         {exporting() ? "Exporting..." : "Export GIF"}
       </button>
       <Show when={exporting()}>
-        <div class="progress" style={{ "--p": `${Math.round(progress() * 100)}%` }}>
-          <div class="progress-fill" />
+        <div class="progress-row">
+          <div
+            class="progress"
+            style={{ "--p": `${Math.round(progress() * 100)}%` }}
+          >
+            <div class="progress-fill" />
+          </div>
+          <span class="progress-pct">{Math.round(progress() * 100)}%</span>
         </div>
       </Show>
       <Show when={status()}>

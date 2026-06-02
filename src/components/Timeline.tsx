@@ -20,7 +20,7 @@ import { formatTimecode } from "../format";
 // grabbability constraint.
 const MIN_SELECTION = 1;
 // Most-zoomed-in state: the whole strip shows this many seconds.
-const MIN_VIEW_SPAN = 60;
+const MIN_VIEW_SPAN = 30;
 // Wheel zoom step.
 const ZOOM_FACTOR = 1.2;
 
