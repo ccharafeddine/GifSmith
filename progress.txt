@@ -139,6 +139,11 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     floor, trim-pull on zoom-in, trim-frozen on zoom-out.
   - Possible follow-ups if needed: horizontal pan when zoomed (not built),
     keyboard nudge for frame-accurate handle moves.
+  - FIX 2026-06-02: handles got "stuck" at min length (overlapped, ~1px apart,
+    ungrabbable). Now enforce a zoom-scaled min gap (MIN_GAP_PX = 2*handle =
+    28px -> seconds via track width). effFloor = min(gap, currentSelection) so
+    a selection set at deep zoom then zoomed out won't force-open; only blocks
+    further shrinking, expansion always allowed. Zoom feels good per user.
 
 == NEXT ==
 

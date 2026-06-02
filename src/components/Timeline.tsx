@@ -15,8 +15,13 @@ import {
 } from "../state";
 import { formatTimecode } from "../format";
 
-// Smallest selectable clip, in seconds, so IN and OUT can't collapse together.
+// Absolute smallest selectable clip, in seconds (a safety floor).
 const MIN_SELECTION = 0.1;
+// Handle width in px (matches .tl-handle in App.css).
+const HANDLE_PX = 14;
+// Keep IN and OUT at least two handle widths apart on screen so they never
+// overlap and both stay grabbable. Converted to seconds per the current zoom.
+const MIN_GAP_PX = 2 * HANDLE_PX;
 // Most-zoomed-in state: the whole strip shows this many seconds.
 const MIN_VIEW_SPAN = 60;
 // Wheel zoom step.
@@ -53,6 +58,16 @@ export default function Timeline() {
     return viewStart() + frac * viewSpan();
   }
 
+  // Minimum IN/OUT gap in seconds that keeps the handles from overlapping at
+  // the current zoom (MIN_GAP_PX on screen).
+  function minGapTime(): number {
+    const span = viewSpan();
+    if (!track || span <= 0) return MIN_SELECTION;
+    const w = track.getBoundingClientRect().width;
+    if (w <= 0) return MIN_SELECTION;
+    return Math.max(MIN_SELECTION, (MIN_GAP_PX / w) * span);
+  }
+
   function seekTo(t: number) {
     const v = videoEl();
     if (v) v.currentTime = t;
@@ -64,13 +79,15 @@ export default function Timeline() {
 
     const apply = (clientX: number) => {
       const t = timeFromClientX(clientX);
+      // Block shrinking past the on-screen gap, but if the selection is already
+      // smaller (e.g. set at a deeper zoom, then zoomed out) don't force it
+      // open: only stop it from shrinking further. Expanding is always allowed.
+      const gap = Math.min(minGapTime(), outPoint() - inPoint());
       if (kind === "in") {
-        const next = clamp(t, viewStart(), outPoint() - MIN_SELECTION);
-        setInPoint(next);
+        setInPoint(clamp(t, viewStart(), outPoint() - gap));
         if (currentTime() < inPoint()) seekTo(inPoint());
       } else if (kind === "out") {
-        const next = clamp(t, inPoint() + MIN_SELECTION, viewEnd());
-        setOutPoint(next);
+        setOutPoint(clamp(t, inPoint() + gap, viewEnd()));
         if (currentTime() > outPoint()) seekTo(outPoint());
       } else {
         seekTo(clamp(t, inPoint(), outPoint()));
