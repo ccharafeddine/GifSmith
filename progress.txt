@@ -65,9 +65,27 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - NOT verified at runtime: needs `npm run tauri dev`, click Open video, pick
     a file. This now exercises the real dialog + ffprobe sidecar end to end.
 
+[Step 5] VideoPlayer — 2026-06-01
+  - tauri.conf.json: enabled app.security.assetProtocol (enable:true,
+    scope:["**"]) so convertFileSrc can serve the local file to <video>.
+    CSP left null (avoids breaking Vite HMR; harden in Step 15).
+  - Cargo.toml: added "protocol-asset" feature to tauri (required when
+    assetProtocol is enabled; the tauri CLI adds it but plain cargo build
+    needs it explicit).
+  - src/components/VideoPlayer.tsx: <video src={convertFileSrc(filePath)}>,
+    native controls hidden, custom Play/Pause toggle, range seekbar bound to
+    currentTime (onTimeUpdate -> signal, onInput -> video.currentTime),
+    m:ss / m:ss time readout. Resets transport on source change.
+  - src/format.ts: shared formatTimecode (used by App + player).
+  - App.tsx renders VideoPlayer below file-info when meta is loaded.
+  - VERIFIED: npm run build (TS ok), cargo build (assetProtocol config valid).
+  - RUNTIME RISK to check: assetProtocol scope ["**"] matching Windows paths.
+    If playback fails with "asset protocol not configured to allow the path",
+    switch to runtime allow_file scoping. Confirm via `npm run tauri dev`.
+
 == NEXT ==
 
-[Step 5] VideoPlayer: <video src={convertFileSrc(path)}> + play/pause + seekbar.
+[Step 6] Timeline trim handles (IN/OUT), constrain in<out, loop playback.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

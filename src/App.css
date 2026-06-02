@@ -20,6 +20,36 @@
   font-size: 0.9rem;
 }
 
+.player {
+  margin-top: 1rem;
+}
+
+.player video {
+  width: 100%;
+  max-height: 50vh;
+  background: #000;
+  border-radius: 8px;
+  display: block;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.controls input[type="range"] {
+  flex: 1;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  color: #6e6e73;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
