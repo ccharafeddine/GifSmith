@@ -181,6 +181,14 @@ export default function ExportPanel() {
             />
             Portrait
           </label>
+          <label class="crop-toggle">
+            <input
+              type="checkbox"
+              checked={cropAspect() === "square"}
+              onChange={() => chooseAspect("square")}
+            />
+            Square
+          </label>
         </div>
       </Show>
 
