@@ -14,6 +14,10 @@ import {
   setQuality,
   setPreviewPath,
   setPreviewVersion,
+  cropEnabled,
+  setCropEnabled,
+  crop,
+  setCrop,
 } from "../state";
 
 export default function ExportPanel() {
@@ -21,13 +25,42 @@ export default function ExportPanel() {
   const [progress, setProgress] = createSignal(0);
   const [error, setError] = createSignal<string | null>(null);
 
-  // Output height, derived from source aspect at the chosen width (preview).
-  const outHeight = () => {
+  // Effective input dimensions: the crop region when cropping, else the source.
+  const inputDims = () => {
     const m = meta();
-    if (!m || m.width === 0) return 0;
-    const h = Math.round((m.height * width()) / m.width);
+    const c = crop();
+    if (cropEnabled() && c && c.w > 0 && c.h > 0) return { w: c.w, h: c.h };
+    return m ? { w: m.width, h: m.height } : { w: 0, h: 0 };
+  };
+
+  // Output height, derived from the input aspect at the chosen width (preview).
+  const outHeight = () => {
+    const d = inputDims();
+    if (d.w === 0) return 0;
+    const h = Math.round((d.h * width()) / d.w);
     return h - (h % 2);
   };
+
+  function toggleCrop(on: boolean) {
+    setCropEnabled(on);
+    const m = meta();
+    if (on && !crop() && m) {
+      setCrop({ x: 0, y: 0, w: m.width, h: m.height });
+    }
+  }
+
+  // Crop payload for export: rounded ints, or null when off / full-frame.
+  function cropPayload() {
+    const m = meta();
+    const c = crop();
+    if (!cropEnabled() || !c || !m) return null;
+    const x = Math.round(c.x);
+    const y = Math.round(c.y);
+    const w = Math.round(c.w);
+    const h = Math.round(c.h);
+    if (x <= 0 && y <= 0 && w >= m.width && h >= m.height) return null;
+    return { x, y, w, h };
+  }
 
   async function doExport() {
     const input = filePath();
@@ -50,6 +83,7 @@ export default function ExportPanel() {
         quality: quality(),
         srcWidth: m.width,
         srcHeight: m.height,
+        crop: cropPayload(),
       });
       setPreviewVersion((v) => v + 1);
       setPreviewPath(tempPath);
@@ -63,6 +97,15 @@ export default function ExportPanel() {
 
   return (
     <section class="export-panel">
+      <label class="crop-toggle">
+        <input
+          type="checkbox"
+          checked={cropEnabled()}
+          onChange={(e) => toggleCrop(e.currentTarget.checked)}
+        />
+        Crop
+      </label>
+
       <div class="setting">
         <label for="fps">FPS</label>
         <input

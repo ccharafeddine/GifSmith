@@ -45,3 +45,18 @@ export const [previewPath, setPreviewPath] = createSignal<string | null>(null);
 
 /** Bumped on each export so the preview <img> reloads past the cache. */
 export const [previewVersion, setPreviewVersion] = createSignal(0);
+
+// --- Crop (source pixel coordinates) ---
+
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Whether the crop overlay is active. */
+export const [cropEnabled, setCropEnabled] = createSignal(false);
+
+/** Crop region in source pixels, or null for the full frame. */
+export const [crop, setCrop] = createSignal<CropRect | null>(null);

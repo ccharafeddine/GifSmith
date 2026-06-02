@@ -12,10 +12,13 @@ import {
   setVideoEl,
   setViewStart,
   setViewEnd,
+  setCropEnabled,
+  setCrop,
 } from "../state";
 import { formatTimecode } from "../format";
 import { togglePlayback } from "../playback";
 import Timeline from "./Timeline";
+import CropOverlay from "./CropOverlay";
 
 /**
  * Plays the loaded source video via the asset protocol. Play/pause toggle plus
@@ -40,6 +43,8 @@ export default function VideoPlayer() {
     setOutPoint(dur);
     setViewStart(0);
     setViewEnd(dur);
+    setCropEnabled(false);
+    setCrop(null);
   });
 
   function onTimeUpdate(t: number) {
@@ -59,19 +64,27 @@ export default function VideoPlayer() {
 
   const selectionLength = () => Math.max(0, outPoint() - inPoint());
 
+  const aspect = () => {
+    const m = meta();
+    return m && m.height > 0 ? `${m.width}/${m.height}` : "16/9";
+  };
+
   return (
     <section class="player">
-      <video
-        ref={(el) => {
-          videoEl = el;
-          setVideoEl(el);
-        }}
-        src={src()}
-        onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={onEnded}
-      />
+      <div class="stage" style={{ "--aspect": aspect() }}>
+        <video
+          ref={(el) => {
+            videoEl = el;
+            setVideoEl(el);
+          }}
+          src={src()}
+          onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={onEnded}
+        />
+        <CropOverlay />
+      </div>
       <Timeline />
       <div class="controls">
         <button type="button" onClick={togglePlayback}>

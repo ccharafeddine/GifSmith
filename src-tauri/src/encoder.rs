@@ -30,6 +30,16 @@ pub enum EncodeError {
     NoFrames,
 }
 
+/// A crop region in source pixels (FFmpeg `crop=w:h:x:y`).
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Crop {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
 /// Parameters for a single export. Field names are camelCase over IPC.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +52,8 @@ pub struct ExportParams {
     pub quality: u8,
     pub src_width: u32,
     pub src_height: u32,
+    /// Optional crop, applied before scaling.
+    pub crop: Option<Crop>,
 }
 
 /// Round down to the nearest even number, clamped to a minimum of 2. FFmpeg's
@@ -68,18 +80,29 @@ pub fn export_gif(
     on_progress: &dyn Fn(f64),
 ) -> Result<(), EncodeError> {
     let out_w = even(params.width);
-    // Derive height from source aspect so the frame byte size is known exactly
+    // Aspect comes from the crop region when cropping, else the full source.
+    let (in_w, in_h) = match params.crop {
+        Some(c) if c.w > 0 && c.h > 0 => (c.w, c.h),
+        _ => (params.src_width, params.src_height),
+    };
+    // Derive height from input aspect so the frame byte size is known exactly
     // (avoids ffmpeg's scale=-1 rounding, which we couldn't predict).
-    let out_h = if params.src_width == 0 {
+    let out_h = if in_w == 0 {
         out_w
     } else {
-        let h = (f64::from(params.src_height) * f64::from(out_w) / f64::from(params.src_width))
-            .round() as u32;
+        let h = (f64::from(in_h) * f64::from(out_w) / f64::from(in_w)).round() as u32;
         even(h)
     };
     let frame_bytes = out_w as usize * out_h as usize * 4;
     let duration = (params.end_secs - params.start_secs).max(0.0);
-    let vf = format!("fps={},scale={out_w}:{out_h}:flags=lanczos", params.fps);
+    // crop (if any) must come before scale.
+    let vf = match params.crop {
+        Some(c) if c.w > 0 && c.h > 0 => format!(
+            "fps={},crop={}:{}:{}:{},scale={out_w}:{out_h}:flags=lanczos",
+            params.fps, c.w, c.h, c.x, c.y
+        ),
+        _ => format!("fps={},scale={out_w}:{out_h}:flags=lanczos", params.fps),
+    };
 
     // -ss before -i = fast (keyframe) seek; good enough for the MVP. -t bounds
     // the output to the selection length.

@@ -11,6 +11,14 @@ export interface VideoMeta {
   container: string;
 }
 
+/** A crop region in source pixels. Mirrors `Crop` in encoder.rs. */
+export interface Crop {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** Mirrors `ExportParams` in src-tauri/src/encoder.rs (camelCase over IPC). */
 export interface ExportParams {
   inputPath: string;
@@ -21,6 +29,7 @@ export interface ExportParams {
   quality: number;
   srcWidth: number;
   srcHeight: number;
+  crop: Crop | null;
 }
 
 /** Probe a local video file via the bundled ffprobe sidecar. */

@@ -205,9 +205,26 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - TO TEST: Space toggles play; arrows step a frame (pauses); I/O set in/out at
     playhead; Esc closes the preview modal. Sliders still take arrows natively.
 
+[Step 12] Crop overlay — 2026-06-02
+  - encoder.rs: Crop {x,y,w,h} struct; ExportParams.crop: Option<Crop>. vf
+    prepends crop=w:h:x:y before scale; out_h aspect derives from crop dims when
+    cropping (else source).
+  - ipc.ts: Crop interface + ExportParams.crop. state.ts: cropEnabled + crop
+    (CropRect|null), reset on new source.
+  - VideoPlayer: video now wrapped in a .stage sized to EXACT source aspect
+    (aspect-ratio: var(--aspect); max-width: calc(50vh*aspect)) so no letterbox
+    -> crop overlay maps to source px by percentage. CropOverlay rendered inside.
+  - CropOverlay.tsx: draggable body + 4 corner handles, stored in source px,
+    box-shadow dims outside. Pointer drag -> source px via live element size.
+  - ExportPanel: Crop checkbox (inits crop to full frame); outHeight uses crop
+    aspect; cropPayload() sends rounded ints or null (off/full-frame).
+  - VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm run build.
+  - TO TEST: toggle Crop, drag/resize the rect, export, confirm the GIF is
+    cropped to that region and scaled to the chosen width.
+
 == NEXT ==
 
-[Step 12] Crop overlay: draggable/resizable rect in source px, feed crop= filter.
+[Step 13] Bounce loop: forward+reversed frames, RAM pre-flight warning >2GB.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
