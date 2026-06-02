@@ -285,7 +285,11 @@ crop export test too.
 == ALL 17 BUILD-PLAN STEPS DONE ==
 Remaining polish/todos:
   - Add screenshots (light + dark) when ready.
-  - Custom graphics / style pass (user wants later).
+  - [Style pass IN PROGRESS 2026-06-02] Custom GifSmith wordmark logo: Poppins
+    (rounded/friendly, user pick) self-hosted via @fontsource latin-500/600.
+    Logo.tsx = "Gif" + muted "Smith" framed by the iOS trim selection (yellow
+    handles + rails), reusing timeline look. Header + tagline. NEXT: app icon
+    (.ico/.icns) from a matching mark via `tauri icon`; favicon; more flourish.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.
   - DONE 2026-06-02: app-close temp cleanup. lib.rs uses .build().run() and on

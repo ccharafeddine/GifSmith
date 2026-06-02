@@ -58,10 +58,72 @@ body {
   padding: calc(var(--space) * 3);
 }
 
-h1 {
-  font-size: 1.5rem;
+.app-header {
+  margin-bottom: calc(var(--space) * 1.5);
+}
+
+.tagline {
+  margin: 0.4rem 0 0 2px;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+/* ---- Logo: the wordmark framed by the iOS trim selection --------------- */
+
+.logo {
+  display: inline-flex;
+  user-select: none;
+}
+
+.logo-frame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  border-top: 3px solid var(--trim);
+  border-bottom: 3px solid var(--trim);
+}
+
+.logo-word {
+  font-family: "Poppins", -apple-system, "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
-  margin: 0 0 var(--space);
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+
+.logo-word-accent {
+  color: var(--fg-muted);
+}
+
+.logo-handle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 11px;
+  background: var(--trim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-handle::after {
+  content: "";
+  width: 2px;
+  height: 45%;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 1px;
+}
+
+.logo-handle-l {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.logo-handle-r {
+  right: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 /* ---- Controls --------------------------------------------------------- */

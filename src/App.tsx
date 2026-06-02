@@ -3,6 +3,7 @@ import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
+import Logo from "./components/Logo";
 import { filePath, meta, previewPath, setPreviewPath } from "./state";
 import {
   togglePlayback,
@@ -76,7 +77,10 @@ function App() {
 
   return (
     <main class="container">
-      <h1>GifSmith</h1>
+      <header class="app-header">
+        <Logo />
+        <p class="tagline">Turn a slice of video into a high-quality GIF.</p>
+      </header>
       <DropZone />
 
       <Show when={meta()}>
