@@ -20,6 +20,10 @@ import {
   setCropEnabled,
   crop,
   setCrop,
+  cropAspect,
+  setCropAspect,
+  ASPECT_RATIO,
+  type CropAspect,
   boomerang,
   setBoomerang,
 } from "../state";
@@ -65,10 +69,40 @@ export default function ExportPanel() {
 
   function toggleCrop(on: boolean) {
     setCropEnabled(on);
+    setCropAspect("free");
     const m = meta();
     if (on && !crop() && m) {
       setCrop({ x: 0, y: 0, w: m.width, h: m.height });
     }
+  }
+
+  // Largest centered rectangle of the given aspect ratio (w/h) within the source.
+  function fitAspect(ratio: number) {
+    const m = meta();
+    if (!m) return null;
+    let w = Math.min(m.width, m.height * ratio);
+    let h = w / ratio;
+    if (h > m.height) {
+      h = m.height;
+      w = h * ratio;
+    }
+    return {
+      x: Math.round((m.width - w) / 2),
+      y: Math.round((m.height - h) / 2),
+      w: Math.round(w),
+      h: Math.round(h),
+    };
+  }
+
+  // Toggle a locked aspect: re-clicking the active one returns to free-form.
+  function chooseAspect(mode: Exclude<CropAspect, "free">) {
+    if (cropAspect() === mode) {
+      setCropAspect("free");
+      return;
+    }
+    setCropAspect(mode);
+    const fitted = fitAspect(ASPECT_RATIO[mode]);
+    if (fitted) setCrop(fitted);
   }
 
   // Crop payload for export: rounded ints, or null when off / full-frame.
@@ -129,6 +163,26 @@ export default function ExportPanel() {
         />
         Crop
       </label>
+      <Show when={cropEnabled()}>
+        <div class="aspect-row">
+          <label class="crop-toggle">
+            <input
+              type="checkbox"
+              checked={cropAspect() === "landscape"}
+              onChange={() => chooseAspect("landscape")}
+            />
+            Landscape
+          </label>
+          <label class="crop-toggle">
+            <input
+              type="checkbox"
+              checked={cropAspect() === "portrait"}
+              onChange={() => chooseAspect("portrait")}
+            />
+            Portrait
+          </label>
+        </div>
+      </Show>
 
       <label class="crop-toggle">
         <input

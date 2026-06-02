@@ -14,6 +14,7 @@ import {
   setViewEnd,
   setCropEnabled,
   setCrop,
+  setCropAspect,
   setBoomerang,
   playing,
   videoEl,
@@ -51,6 +52,7 @@ export default function VideoPlayer() {
     setViewEnd(dur);
     setCropEnabled(false);
     setCrop(null);
+    setCropAspect("free");
     setBoomerang(false);
   });
 

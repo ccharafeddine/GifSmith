@@ -1,5 +1,13 @@
 import { Show } from "solid-js";
-import { meta, cropEnabled, crop, setCrop, type CropRect } from "../state";
+import {
+  meta,
+  cropEnabled,
+  crop,
+  setCrop,
+  cropAspect,
+  ASPECT_RATIO,
+  type CropRect,
+} from "../state";
 
 // Smallest crop in source pixels.
 const MIN_CROP = 16;
@@ -64,11 +72,36 @@ export default function CropOverlay() {
     const py = e.clientY;
     const { sx, sy } = scale();
 
+    // Locked aspect (landscape/portrait) resizes around the opposite corner,
+    // keeping w/h = ratio. Free mode resizes each edge independently.
+    const mode = cropAspect();
+    const ratio = mode === "free" ? null : ASPECT_RATIO[mode];
+
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - px) * sx;
       const dy = (ev.clientY - py) * sy;
-      const next = { ...start };
 
+      if (ratio !== null) {
+        // Anchor = corner opposite the one being dragged.
+        const ax = corner === "nw" || corner === "sw" ? start.x + start.w : start.x;
+        const ay = corner === "nw" || corner === "ne" ? start.y + start.h : start.y;
+        const pointerX =
+          corner === "nw" || corner === "sw" ? start.x + dx : start.x + start.w + dx;
+        const roomX = corner === "nw" || corner === "sw" ? ax : srcW() - ax;
+        const roomY = corner === "nw" || corner === "ne" ? ay : srcH() - ay;
+        const maxW = Math.min(roomX, roomY * ratio);
+        const w = clamp(Math.abs(pointerX - ax), MIN_CROP, Math.max(MIN_CROP, maxW));
+        const h = w / ratio;
+        setCrop({
+          x: corner === "nw" || corner === "sw" ? ax - w : ax,
+          y: corner === "nw" || corner === "ne" ? ay - h : ay,
+          w,
+          h,
+        });
+        return;
+      }
+
+      const next = { ...start };
       if (corner === "nw" || corner === "sw") {
         const nx = clamp(start.x + dx, 0, start.x + start.w - MIN_CROP);
         next.x = nx;

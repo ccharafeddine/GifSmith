@@ -320,6 +320,13 @@ Remaining polish/todos:
     pure shapes, font-free so resvg rasterizes cleanly). `tauri icon` regenerated
     src-tauri/icons/* (desktop + ios/android kept for the planned mobile port).
     Favicon repointed to the SVG. Window/taskbar icon updates on next build.
+  - Crop aspect presets 2026-06-02 (user): Landscape (16:9) + Portrait (9:16,
+    iPhone shape) checkboxes shown when Crop is on. state.cropAspect
+    (free|landscape|portrait) + ASPECT_RATIO. Choosing one fits a centered
+    max rect of that ratio and locks aspect during resize (CropOverlay resizes
+    around the opposite corner, w/h=ratio); re-clicking returns to free. Crop
+    stays draggable. Encoder unchanged (already crops to the given rect).
+    Reset to free on new file / crop toggle. Frontend-only; npm build clean.
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

@@ -458,6 +458,16 @@ input {
   color: var(--fg-2);
 }
 
+.aspect-row {
+  display: flex;
+  gap: var(--s4);
+  margin: 0 0 var(--s3) var(--s5);
+}
+
+.aspect-row .crop-toggle {
+  margin-bottom: 0;
+}
+
 .bounce-note {
   margin: calc(-1 * var(--s1)) 0 var(--s3);
   color: var(--fg-2);

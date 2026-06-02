@@ -67,5 +67,15 @@ export const [cropEnabled, setCropEnabled] = createSignal(false);
 /** Crop region in source pixels, or null for the full frame. */
 export const [crop, setCrop] = createSignal<CropRect | null>(null);
 
+/** Locked crop aspect: free-form, 16:9 landscape, or 9:16 portrait. */
+export type CropAspect = "free" | "landscape" | "portrait";
+export const [cropAspect, setCropAspect] = createSignal<CropAspect>("free");
+
+/** Aspect ratio (w/h) for a locked crop mode. */
+export const ASPECT_RATIO: Record<Exclude<CropAspect, "free">, number> = {
+  landscape: 16 / 9,
+  portrait: 9 / 16,
+};
+
 /** Play the clip forward then reversed. */
 export const [boomerang, setBoomerang] = createSignal(false);
