@@ -52,9 +52,22 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   C: was 100% full mid-Step-3; user freed space (now ~15G free / 466G, 97%).
   Keep an eye on it: target ~5.2G, the release `tauri build` needs several GB.
 
+[Step 4] DropZone + file picker — 2026-06-01
+  - tauri-plugin-dialog added (Cargo + npm @tauri-apps/plugin-dialog),
+    registered in lib.rs, capability "dialog:allow-open".
+  - src/state.ts: shared signals filePath, meta (replaces App-local signals).
+  - src/components/DropZone.tsx: native open() dialog filtered to
+    mp4/mov/mkv/webm/avi/m4v; on select stores path, probes, stores meta.
+    Handles cancel / loading / error states.
+  - App.tsx: renders DropZone, shows filename + duration (+ dims/fps/codec).
+    Removed the Step 3 temp hardcoded-path button.
+  - VERIFIED: npm run build (TS ok), cargo clippy --all-targets -D warnings (clean).
+  - NOT verified at runtime: needs `npm run tauri dev`, click Open video, pick
+    a file. This now exercises the real dialog + ffprobe sidecar end to end.
+
 == NEXT ==
 
-[Step 4] DropZone + file picker (@tauri-apps/plugin-dialog).
+[Step 5] VideoPlayer: <video src={convertFileSrc(path)}> + play/pause + seekbar.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

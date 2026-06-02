@@ -1,45 +1,37 @@
-import { createSignal, Show } from "solid-js";
-import { probeVideo, type VideoMeta } from "./ipc";
+import { Show } from "solid-js";
+import DropZone from "./components/DropZone";
+import { filePath, meta } from "./state";
 import "./App.css";
 
-// TEMP (build plan Step 3): hardcoded path to exercise probe_video.
-// Replaced by a real file picker in Step 4. Point this at a video on your
-// machine before clicking Probe.
-const TEMP_VIDEO_PATH = "C:\\Users\\mnc-9\\Videos\\sample.mp4";
+function basename(p: string): string {
+  const parts = p.split(/[\\/]/);
+  return parts[parts.length - 1] || p;
+}
+
+function formatDuration(secs: number): string {
+  const total = Math.round(secs);
+  const mins = Math.floor(total / 60);
+  const rem = total % 60;
+  return `${mins}:${rem.toString().padStart(2, "0")}`;
+}
 
 function App() {
-  const [meta, setMeta] = createSignal<VideoMeta | null>(null);
-  const [error, setError] = createSignal<string | null>(null);
-
-  async function probe() {
-    setError(null);
-    setMeta(null);
-    try {
-      const result = await probeVideo(TEMP_VIDEO_PATH);
-      console.log("probe_video result:", result);
-      setMeta(result);
-    } catch (e) {
-      console.error("probe_video error:", e);
-      setError(String(e));
-    }
-  }
-
   return (
     <main class="container">
       <h1>GifSmith</h1>
-      <p>Step 3 harness: probe a hardcoded video path.</p>
-      <p>
-        <code>{TEMP_VIDEO_PATH}</code>
-      </p>
-      <button type="button" onClick={probe}>
-        Probe video
-      </button>
+      <DropZone />
 
       <Show when={meta()}>
-        {(m) => <pre>{JSON.stringify(m(), null, 2)}</pre>}
-      </Show>
-      <Show when={error()}>
-        <p class="error">{error()}</p>
+        {(m) => (
+          <section class="file-info">
+            <p class="filename">{basename(filePath() ?? "")}</p>
+            <p class="meta-line">
+              {formatDuration(m().duration_secs)} &middot; {m().width}&times;
+              {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
+              &middot; {m().codec} &middot; {m().container}
+            </p>
+          </section>
+        )}
       </Show>
     </main>
   );

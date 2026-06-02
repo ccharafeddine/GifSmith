@@ -2,6 +2,24 @@
   color: #c00;
 }
 
+.dropzone {
+  margin: 1.5rem 0;
+}
+
+.file-info {
+  margin-top: 1rem;
+}
+
+.filename {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.meta-line {
+  color: #6e6e73;
+  font-size: 0.9rem;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
