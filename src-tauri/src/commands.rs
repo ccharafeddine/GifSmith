@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::ShellExt;
 
 /// Probe a local video file with the bundled `ffprobe` sidecar and return its
@@ -53,13 +53,18 @@ pub async fn probe_video(app: AppHandle, path: String) -> Result<VideoMeta, Stri
 /// Returns a user-facing message if ffmpeg can't be located or run, or if
 /// encoding fails.
 #[tauri::command]
-pub async fn export_gif(params: ExportParams) -> Result<(), String> {
+pub async fn export_gif(app: AppHandle, params: ExportParams) -> Result<(), String> {
     let ffmpeg = ffmpeg_path().map_err(|e| format!("could not locate ffmpeg: {e}"))?;
-    // Encoding is blocking and CPU-bound; keep it off the async runtime.
-    tauri::async_runtime::spawn_blocking(move || run_export(&ffmpeg, &params))
-        .await
-        .map_err(|e| format!("export task failed to run: {e}"))?
-        .map_err(|e| e.to_string())
+    // Encoding is blocking and CPU-bound; keep it off the async runtime. Frame
+    // progress is emitted to the frontend as "export-progress" (0.0-1.0).
+    tauri::async_runtime::spawn_blocking(move || {
+        run_export(&ffmpeg, &params, &|p| {
+            let _ = app.emit("export-progress", p);
+        })
+    })
+    .await
+    .map_err(|e| format!("export task failed to run: {e}"))?
+    .map_err(|e| e.to_string())
 }
 
 /// Resolve the bundled `ffmpeg` sidecar. Tauri places it next to the app binary

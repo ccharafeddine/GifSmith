@@ -1,5 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { save } from "@tauri-apps/plugin-dialog";
+import { listen } from "@tauri-apps/api/event";
 import { exportGif } from "../ipc";
 import {
   filePath,
@@ -16,6 +17,7 @@ import {
 
 export default function ExportPanel() {
   const [exporting, setExporting] = createSignal(false);
+  const [progress, setProgress] = createSignal(0);
   const [status, setStatus] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -47,7 +49,11 @@ export default function ExportPanel() {
     }
     if (!dest) return; // user cancelled
 
+    setProgress(0);
     setExporting(true);
+    const unlisten = await listen<number>("export-progress", (e) =>
+      setProgress(e.payload),
+    );
     try {
       await exportGif({
         inputPath: input,
@@ -64,6 +70,7 @@ export default function ExportPanel() {
     } catch (e) {
       setError(String(e));
     } finally {
+      unlisten();
       setExporting(false);
     }
   }
@@ -117,6 +124,11 @@ export default function ExportPanel() {
       <button type="button" onClick={doExport} disabled={exporting()}>
         {exporting() ? "Exporting..." : "Export GIF"}
       </button>
+      <Show when={exporting()}>
+        <div class="progress" style={{ "--p": `${Math.round(progress() * 100)}%` }}>
+          <div class="progress-fill" />
+        </div>
+      </Show>
       <Show when={status()}>
         <p class="status">{status()}</p>
       </Show>

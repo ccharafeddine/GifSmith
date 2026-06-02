@@ -56,12 +56,17 @@ fn even(v: u32) -> u32 {
     }
 }
 
-/// Run the full export. Blocking: call from a blocking thread.
+/// Run the full export. Blocking: call from a blocking thread. `on_progress` is
+/// called with a 0.0-1.0 fraction of frames read (throttled to ~1% steps).
 ///
 /// # Errors
 /// Fails if ffmpeg can't start or exits non-zero, on any i/o error, if gifski
 /// rejects a frame, or if the selection yields no frames.
-pub fn export_gif(ffmpeg: &Path, params: &ExportParams) -> Result<(), EncodeError> {
+pub fn export_gif(
+    ffmpeg: &Path,
+    params: &ExportParams,
+    on_progress: &dyn Fn(f64),
+) -> Result<(), EncodeError> {
     let out_w = even(params.width);
     // Derive height from source aspect so the frame byte size is known exactly
     // (avoids ffmpeg's scale=-1 rounding, which we couldn't predict).
@@ -128,6 +133,11 @@ pub fn export_gif(ffmpeg: &Path, params: &ExportParams) -> Result<(), EncodeErro
         Ok(())
     });
 
+    // Estimated frame count for progress reporting.
+    let total_frames = (duration * f64::from(params.fps)).round().max(1.0) as usize;
+    let mut last_pct: i32 = -1;
+    on_progress(0.0);
+
     let mut buf = vec![0u8; frame_bytes];
     let mut idx = 0usize;
     loop {
@@ -143,6 +153,14 @@ pub fn export_gif(ffmpeg: &Path, params: &ExportParams) -> Result<(), EncodeErro
         let pts = idx as f64 / f64::from(params.fps);
         collector.add_frame_rgba(idx, img, pts)?;
         idx += 1;
+
+        // Throttle progress emissions to whole-percent changes.
+        let frac = (idx as f64 / total_frames as f64).min(1.0);
+        let pct = (frac * 100.0) as i32;
+        if pct != last_pct {
+            last_pct = pct;
+            on_progress(frac);
+        }
     }
     drop(collector); // signal end of stream so the writer can finish
 
@@ -158,6 +176,7 @@ pub fn export_gif(ffmpeg: &Path, params: &ExportParams) -> Result<(), EncodeErro
     if idx == 0 {
         return Err(EncodeError::NoFrames);
     }
+    on_progress(1.0);
     Ok(())
 }
 

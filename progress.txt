@@ -157,9 +157,21 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - VERIFIED: cargo clippy -D warnings, cargo test, npm run build.
   - TO TEST: move sliders, export, confirm fps/size/quality change in output.
 
+[Step 9] Export progress bar — 2026-06-02
+  - encoder::export_gif takes &dyn Fn(f64) on_progress. Emits 0.0 at start,
+    frames-read/total_frames (throttled to whole-percent changes) per frame,
+    1.0 at end. total_frames = round(duration*fps).
+  - commands::export_gif takes AppHandle, emits "export-progress" (tauri::Emitter)
+    from the spawn_blocking closure.
+  - ExportPanel: listens for export-progress while exporting, renders a fill bar
+    (.progress / .progress-fill, width via --p custom prop). unlisten in finally.
+    Covered by existing core:default (includes core:event:default).
+  - VERIFIED: cargo clippy -D warnings, npm run build.
+  - TO TEST: export a longer clip, watch the bar fill 0->100%.
+
 == NEXT ==
 
-[Step 9] Progress events: encoder emits export-progress (0..1), panel shows bar.
+[Step 10] PreviewModal: export to OS temp, show result, Save / Re-export / Discard.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

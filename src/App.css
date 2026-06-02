@@ -196,6 +196,21 @@
   word-break: break-all;
 }
 
+.progress {
+  height: 6px;
+  margin-top: 0.6rem;
+  background: #e5e5ea;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: var(--p);
+  background: #007aff;
+  transition: width 0.1s linear;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
