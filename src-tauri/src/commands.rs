@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
+use base64::Engine;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
@@ -147,8 +148,8 @@ pub async fn generate_filmstrip(
     path: String,
     duration_secs: f64,
 ) -> Result<String, String> {
-    const COUNT: u32 = 30;
-    const HEIGHT: u32 = 64;
+    const COUNT: u32 = 24;
+    const HEIGHT: u32 = 144;
     let dur = if duration_secs > 0.05 { duration_secs } else { 1.0 };
     let fps = format!("{:.6}", f64::from(COUNT) / dur);
     let vf = format!("fps={fps},scale=-2:{HEIGHT},tile={COUNT}x1");
@@ -180,7 +181,11 @@ pub async fn generate_filmstrip(
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("could not build filmstrip: {}", stderr.trim()));
     }
-    Ok(temp_str)
+
+    // Return a data URI so the <img> loads without touching the asset protocol.
+    let bytes = std::fs::read(&temp).map_err(|e| format!("could not read filmstrip: {e}"))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:image/png;base64,{b64}"))
 }
 
 /// Download a video from a URL with the bundled `yt-dlp` sidecar into the OS

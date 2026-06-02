@@ -44,7 +44,7 @@ export function downloadVideo(url: string): Promise<string> {
   return invoke<string>("download_video", { url });
 }
 
-/** Build a timeline thumbnail strip; resolves to the temp PNG path. */
+/** Build a timeline thumbnail strip; resolves to a PNG data URI. */
 export function generateFilmstrip(
   path: string,
   durationSecs: number,

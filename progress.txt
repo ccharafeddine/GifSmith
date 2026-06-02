@@ -340,6 +340,14 @@ Remaining polish/todos:
     * VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm build.
     * PERF caveat: fps+tile fully decodes; slow on very long clips (background,
       non-blocking). Optimize later if needed (keyframe sampling).
+    * FIX 2026-06-02: strip was black because the asset-protocol URL + ?v= query
+      didn't load on Windows. Now generate_filmstrip returns a base64 data URI
+      (added base64 crate); <img> loads it directly. Confirmed working.
+    * Clarity: gen height 64->144, count 30->24; timeline 48->72px tall.
+    * Responsive (user): container 760->1280, stage cap 50vh->62vh, and the
+      .player block (video+timeline+controls) is sized to the video via
+      --aspect moved to the section, so it enlarges to fit a maximized window
+      and the timeline lines up under the preview.
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

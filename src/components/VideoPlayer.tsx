@@ -71,8 +71,8 @@ export default function VideoPlayer() {
   };
 
   return (
-    <section class="player">
-      <div class="stage" style={{ "--aspect": aspect() }}>
+    <section class="player" style={{ "--aspect": aspect() }}>
+      <div class="stage">
         <video
           ref={(el) => setVideoEl(el)}
           src={src()}

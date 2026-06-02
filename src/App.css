@@ -19,7 +19,7 @@ body {
 /* ---- Layout ----------------------------------------------------------- */
 
 .container {
-  max-width: 760px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: var(--s5);
 }
@@ -235,8 +235,11 @@ input {
 
 /* ---- Player + stage --------------------------------------------------- */
 
+/* The video + timeline + controls sit in one block sized to the video, so the
+   timeline always lines up under the preview. Grows with the window. */
 .player {
-  margin-top: var(--s4);
+  margin: var(--s4) auto 0;
+  max-width: calc(62vh * (var(--aspect)));
 }
 
 /* Stage is sized to the exact source aspect ratio (no letterboxing), capped
@@ -244,9 +247,7 @@ input {
 .stage {
   position: relative;
   width: 100%;
-  max-width: calc(50vh * (var(--aspect)));
   aspect-ratio: var(--aspect);
-  margin: 0 auto;
   background: #000;
   border-radius: var(--r-panel);
   overflow: hidden;
@@ -351,7 +352,7 @@ input {
    Horizontal padding gives the outward-pointing handles room at the edges. */
 .timeline {
   position: relative;
-  height: 48px;
+  height: 72px;
   padding: 0 14px;
   border-radius: var(--r-control);
   background: var(--timeline-bg);

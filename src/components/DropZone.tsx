@@ -2,7 +2,6 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { probeVideo, downloadVideo, generateFilmstrip } from "../ipc";
 import { setFilePath, setMeta, setFilmstripSrc } from "../state";
 
@@ -37,8 +36,9 @@ export default function DropZone() {
       const m = await probeVideo(path);
       setMeta(m);
       // Build the timeline thumbnail strip in the background (non-blocking).
+      // Resolves to a data URI so the <img> loads directly.
       generateFilmstrip(path, m.duration_secs)
-        .then((p) => setFilmstripSrc(`${convertFileSrc(p)}?v=${Date.now()}`))
+        .then((dataUri) => setFilmstripSrc(dataUri))
         .catch(() => setFilmstripSrc(null));
     } catch (e) {
       setError(String(e));
