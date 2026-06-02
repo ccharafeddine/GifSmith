@@ -315,8 +315,12 @@ Remaining polish/todos:
     * Preview honors speed: VideoPlayer effect sets video.playbackRate = speed;
       boomerang reverse scales by speed too.
   - VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm build.
-  - NEXT (graphics, not yet done): app icon (.ico/.icns) via `tauri icon`;
-    favicon; optional flourishes.
+  - App icon 2026-06-02 (user): src/assets/gifsmith-icon.svg = square mark
+    (near-black squircle, gold trim handles+rails+notches, white play glyph;
+    pure shapes, font-free so resvg rasterizes cleanly). `tauri icon` regenerated
+    src-tauri/icons/* (desktop + ios/android kept for the planned mobile port).
+    Favicon repointed to the SVG. Window/taskbar icon updates on next build.
+  - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.
   - DONE 2026-06-02: app-close temp cleanup. lib.rs uses .build().run() and on

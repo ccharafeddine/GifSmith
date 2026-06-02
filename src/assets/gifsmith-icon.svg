@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- GifSmith app mark: the iOS trim-handle frame (gold) around a play glyph,
+       on a near-black squircle. Pure shapes so it rasterizes without fonts. -->
+  <rect width="1024" height="1024" rx="224" fill="#0d0d0d"/>
+
+  <!-- selection rails (top + bottom) -->
+  <rect x="250" y="312" width="524" height="30" fill="#ffd60a"/>
+  <rect x="250" y="682" width="524" height="30" fill="#ffd60a"/>
+
+  <!-- trim handles (left + right) with grip notches -->
+  <rect x="250" y="312" width="84" height="400" rx="18" fill="#ffd60a"/>
+  <rect x="690" y="312" width="84" height="400" rx="18" fill="#ffd60a"/>
+  <rect x="288" y="462" width="8" height="100" rx="4" fill="#0d0d0d"/>
+  <rect x="728" y="462" width="8" height="100" rx="4" fill="#0d0d0d"/>
+
+  <!-- play glyph -->
+  <path d="M454 446 L454 578 L588 512 Z" fill="#ededed"/>
+</svg>
