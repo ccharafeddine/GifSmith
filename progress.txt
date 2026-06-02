@@ -43,20 +43,17 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - capabilities/default.json: shell:allow-execute scope for ffprobe + ffmpeg
     sidecars (args:true). Frontend ipc.ts + temp Probe button in App.tsx
     (hardcoded TEMP_VIDEO_PATH, replaced by file picker in Step 4).
-  - VERIFIED: cargo test (4/4 pass), npm run build (TS type-checks, vite OK).
-  - NOT verified: cargo clippy -- could not finish, DISK FULL (os error 112).
-    Code compiles (cargo test proves it); clippy needs a rerun after freeing
-    space. Also unverified at runtime (needs `npm run tauri dev` + a real video).
+  - VERIFIED: cargo test (4/4 pass), npm run build (TS type-checks, vite OK),
+    cargo clippy --all-targets -- -D warnings (clean, no warnings).
+  - NOT verified at runtime: needs `npm run tauri dev` + a real video. Edit
+    TEMP_VIDEO_PATH in src/App.tsx to a file on disk, click Probe.
 
-== BLOCKER ==
-  C: drive 100% full (21M free / 466G). Blocks further Rust compiles and the
-  eventual `tauri build`. User must free space (suggest 15-20GB+). Our project
-  footprint: target 5.2G, binaries 332M. `cargo clean` reclaims target if
-  needed (forces a full rebuild). Rerun clippy once space is freed.
+== DISK NOTE ==
+  C: was 100% full mid-Step-3; user freed space (now ~15G free / 466G, 97%).
+  Keep an eye on it: target ~5.2G, the release `tauri build` needs several GB.
 
 == NEXT ==
 
-[Step 3-verify] Rerun `cargo clippy --all-targets -- -D warnings` after disk freed.
 [Step 4] DropZone + file picker (@tauri-apps/plugin-dialog).
 
 == ENVIRONMENT ==
