@@ -361,6 +361,15 @@ Remaining polish/todos:
       narrow column. Empty state when no video.
     * TUNABLES: the 300px height-overhead, 300px sidebar width, 0.7 crop aspect.
     * VERIFIED: cargo clippy -D warnings, npm build.
+  - Filmstrip PERF FIX + layout revert 2026-06-02 (user):
+    * 30-min video strip never appeared: fps filter fully decoded the clip.
+      generate_filmstrip now does COUNT fast keyframe seeks (-ss before -i per
+      thumb) + crop + hstack in one ffmpeg pass -> fast at any length.
+    * Reverted the sidebar: back to single column (editor-single). Export panel
+      sits below the video again, but compact: 4 sliders in a 2-col
+      .settings-grid with short fixed-width sliders (150px). Header = logo +
+      compact loader row. .player height budget bumped to (100vh-460px)*aspect.
+    * VERIFIED: cargo clippy -D warnings, npm build. (460px overhead tunable.)
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

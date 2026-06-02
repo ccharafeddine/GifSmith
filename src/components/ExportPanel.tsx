@@ -210,8 +210,9 @@ export default function ExportPanel() {
         </p>
       </Show>
 
-      <div class="setting">
-        <label for="fps">FPS</label>
+      <div class="settings-grid">
+        <div class="setting">
+          <label for="fps">FPS</label>
         <input
           id="fps"
           type="range"
@@ -266,6 +267,7 @@ export default function ExportPanel() {
           onInput={(e) => setSpeed(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">{speed().toFixed(2)}x</span>
+        </div>
       </div>
 
       <button

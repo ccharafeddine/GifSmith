@@ -77,7 +77,7 @@ function App() {
 
   return (
     <main class="container">
-      <header class="topbar">
+      <header class="app-header">
         <Logo />
         <DropZone />
       </header>
@@ -91,20 +91,16 @@ function App() {
         }
       >
         {(m) => (
-          <div class="editor">
-            <div class="editor-main">
-              <p class="meta-line">
-                <span class="filename">{basename(filePath() ?? "")}</span>
-                {"  "}
-                {formatTimecode(m().duration_secs)} &middot; {m().width}&times;
-                {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
-                &middot; {m().codec}
-              </p>
-              <VideoPlayer />
-            </div>
-            <aside class="editor-side">
-              <ExportPanel />
-            </aside>
+          <div class="editor-single">
+            <p class="meta-line">
+              <span class="filename">{basename(filePath() ?? "")}</span>
+              {"  "}
+              {formatTimecode(m().duration_secs)} &middot; {m().width}&times;
+              {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
+              &middot; {m().codec}
+            </p>
+            <VideoPlayer />
+            <ExportPanel />
           </div>
         )}
       </Show>

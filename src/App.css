@@ -28,7 +28,7 @@ body {
   gap: var(--s4);
 }
 
-.topbar {
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -44,38 +44,24 @@ body {
   color: var(--fg-3);
 }
 
-/* Two columns: video + timeline on the left, export settings on the right. */
-.editor {
+/* Single column: video + timeline, then the export panel, centered. */
+.editor-single {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: var(--s5);
-}
-
-.editor-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--s3);
 }
 
-.editor-side {
-  width: 300px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--r-panel);
-  padding: var(--s4);
-}
-
-/* Source loader (top bar) */
+/* Source loader (in the header) */
 .loader {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex-wrap: wrap;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .loader.drag-over {
@@ -250,6 +236,7 @@ input {
 
 .meta-line {
   margin: 0;
+  max-width: 100%;
   color: var(--fg-2);
   font-family: var(--font-mono);
   font-size: var(--fs-num);
@@ -266,7 +253,7 @@ input {
    height (leaving room for the rest) so the page never scrolls. */
 .player {
   width: 100%;
-  max-width: calc((100vh - 300px) * (var(--aspect)));
+  max-width: calc((100vh - 460px) * (var(--aspect)));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -490,8 +477,25 @@ input {
 }
 
 .export-panel > button {
-  width: 100%;
   margin-top: var(--s3);
+  min-width: 200px;
+}
+
+/* Two settings per line, with short sliders. */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: var(--s2) var(--s5);
+  margin-bottom: var(--s2);
+}
+
+.settings-grid .setting {
+  margin-bottom: 0;
+}
+
+.settings-grid .setting input[type="range"] {
+  flex: 0 0 150px;
+  width: 150px;
 }
 
 .crop-toggle {

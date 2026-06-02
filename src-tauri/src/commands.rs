@@ -151,31 +151,46 @@ pub async fn generate_filmstrip(
     const COUNT: u32 = 24;
     const HEIGHT: u32 = 144;
     let dur = if duration_secs > 0.05 { duration_secs } else { 1.0 };
-    let fps = format!("{:.6}", f64::from(COUNT) / dur);
-    // Center-crop each frame to a narrower aspect before tiling so the
-    // thumbnails aren't squished when the strip stretches across the timeline.
-    let vf =
-        format!("fps={fps},crop=min(iw\\,ih*0.7):ih,scale=-2:{HEIGHT},tile={COUNT}x1");
     let temp = filmstrip_path();
     let temp_str = temp.to_string_lossy().into_owned();
+
+    // Fast keyframe seeks: open the file once per thumbnail at evenly spaced
+    // timestamps (-ss before -i = keyframe seek, no full decode), center-crop
+    // each, then hstack into one strip. Stays fast on hour-long videos.
+    let mut args: Vec<String> = vec!["-y".into(), "-v".into(), "error".into()];
+    for i in 0..COUNT {
+        let t = (f64::from(i) + 0.5) * dur / f64::from(COUNT);
+        args.push("-ss".into());
+        args.push(format!("{t:.3}"));
+        args.push("-an".into());
+        args.push("-i".into());
+        args.push(path.clone());
+    }
+    let mut fc = String::new();
+    for i in 0..COUNT {
+        fc.push_str(&format!(
+            "[{i}:v]crop=min(iw\\,ih*0.7):ih,scale=-2:{HEIGHT},setsar=1[v{i}];"
+        ));
+    }
+    for i in 0..COUNT {
+        fc.push_str(&format!("[v{i}]"));
+    }
+    fc.push_str(&format!("hstack=inputs={COUNT}[out]"));
+    args.extend([
+        "-filter_complex".into(),
+        fc,
+        "-map".into(),
+        "[out]".into(),
+        "-frames:v".into(),
+        "1".into(),
+        temp_str.clone(),
+    ]);
 
     let output = app
         .shell()
         .sidecar("ffmpeg")
         .map_err(|e| format!("could not locate ffmpeg: {e}"))?
-        .args([
-            "-y",
-            "-v",
-            "error",
-            "-an",
-            "-i",
-            &path,
-            "-vf",
-            &vf,
-            "-frames:v",
-            "1",
-            &temp_str,
-        ])
+        .args(args)
         .output()
         .await
         .map_err(|e| format!("ffmpeg failed to start: {e}"))?;
