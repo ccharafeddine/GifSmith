@@ -1,28 +1,38 @@
-# GifSmith
+<p align="center">
+  <img src="src/assets/gifsmith-icon.svg" width="128" alt="GifSmith" />
+</p>
 
-A small, fast desktop app for turning a slice of a video into a high-quality
-animated GIF. Open a local video, scrub to pick start and end points, optionally
-crop, tweak the output, and export a `.gif`. No accounts, no library, no
-telemetry, no ads. Your source video is read in place and never imported.
+<h1 align="center">GifSmith</h1>
 
-Built with [Tauri](https://v2.tauri.app), [SolidJS](https://www.solidjs.com),
-and the [gifski](https://github.com/ImageOptim/gifski) encoder, with a bundled
-LGPL build of [FFmpeg](https://ffmpeg.org) for decoding.
+<p align="center">Turn a slice of video into a high-quality animated GIF.</p>
+
+---
+
+GifSmith is a small, fast desktop app for Mac and Windows. Open a local video (or
+import one from a link), scrub to pick start and end points, optionally crop and
+adjust speed, and export a `.gif`. It's local-first: no accounts, no media
+library, no telemetry, no ads. Local videos are read in place and never imported;
+the only network feature is the optional URL import.
+
+Built with [Tauri](https://v2.tauri.app), [SolidJS](https://www.solidjs.com), and
+the [gifski](https://github.com/ImageOptim/gifski) encoder, with a bundled LGPL
+build of [FFmpeg](https://ffmpeg.org) for decoding.
 
 <!-- Screenshots (light + dark) go here. -->
 
 ## Features
 
-- Open `mp4`, `mov`, `mkv`, `webm`, `avi`, `m4v` via file picker or drag-and-drop
+- Open `mp4`, `mov`, `mkv`, `webm`, `avi`, `m4v` via file picker or drag-and-drop,
+  **or import from a URL** (YouTube and other sites, via a bundled `yt-dlp`)
 - iOS-style trim handles over a **zoomable** timeline (zoom down to a 30-second
   window for precise short clips)
 - **Crop** with a draggable, resizable rectangle (tracked in source pixels)
 - **Boomerang** (play forward then reversed), with live preview
-- FPS, width, and quality controls
+- **FPS**, **width**, **quality**, and **speed** (0.5x-2x) controls
 - Preview the result before committing: **Save**, **Re-export**, or **Discard**
 - High-quality `gifski` encoding, streamed frame-by-frame with no intermediate
-  files written
-- Light/dark theme that follows your OS
+  files (a URL import downloads to a temp file that's deleted when you quit)
+- Dark, minimal interface
 - Native binaries for macOS and Windows
 
 ## Keyboard shortcuts
@@ -56,11 +66,11 @@ Prerequisites: [Node.js](https://nodejs.org) 20+ and the
 ```bash
 npm install
 
-# Fetch the FFmpeg + ffprobe sidecars.
-# Windows: downloads the BtbN LGPL static build.
-bash scripts/fetch-ffmpeg.sh
-# macOS: compile an LGPL build from source instead (no LGPL prebuilt exists):
-bash scripts/build-ffmpeg-macos.sh
+# Fetch the bundled binaries (FFmpeg/ffprobe + yt-dlp), placed in
+# src-tauri/binaries with the per-target-triple names Tauri expects.
+bash scripts/fetch-ffmpeg.sh        # Windows: BtbN LGPL static build
+bash scripts/build-ffmpeg-macos.sh  # macOS: compile an LGPL build from source
+bash scripts/fetch-ytdlp.sh         # yt-dlp, for URL import
 
 # Run in development
 npm run tauri dev
@@ -69,22 +79,21 @@ npm run tauri dev
 npm run tauri build
 ```
 
-## FFmpeg licensing
+## Bundled binaries & licensing
 
-GifSmith is MIT licensed and bundles an **LGPL** build of FFmpeg, invoked as a
-separate sidecar process (never linked into the app).
+GifSmith is MIT licensed. The binaries it bundles, all invoked as separate
+sidecar processes (never linked into the app), keep their own licenses:
 
-- **Windows**: the LGPL static build from
-  [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds), fetched
-  unmodified by `scripts/fetch-ffmpeg.sh`.
-- **macOS**: compiled from the official [FFmpeg](https://ffmpeg.org/download.html)
-  source with `--disable-gpl --disable-nonfree` by `scripts/build-ffmpeg-macos.sh`,
-  because no LGPL static macOS build is published.
-
-The bundled FFmpeg is licensed under the LGPL; its source is available at
-<https://ffmpeg.org/download.html>.
+- **FFmpeg** (LGPL). Windows uses the LGPL static build from
+  [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds); macOS is compiled
+  from the official [FFmpeg](https://ffmpeg.org/download.html) source with
+  `--disable-gpl --disable-nonfree` (no LGPL static macOS build is published).
+  Source: <https://ffmpeg.org/download.html>.
+- **yt-dlp** (Unlicense / public domain), for importing from a URL.
+- **Fonts**: Space Grotesk and Space Mono (SIL Open Font License), bundled in
+  `src/assets/fonts` with their license files. No web-font requests are made.
 
 ## License
 
-[MIT](LICENSE) © Chafic Charafeddine. The bundled FFmpeg binaries are LGPL, as
-noted above.
+[MIT](LICENSE) © Chafic Charafeddine. Bundled FFmpeg is LGPL and yt-dlp is
+public domain, as noted above.
