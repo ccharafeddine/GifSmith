@@ -2,6 +2,7 @@ import { Show } from "solid-js";
 import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
+import PreviewModal from "./components/PreviewModal";
 import { filePath, meta } from "./state";
 import { formatTimecode } from "./format";
 import "./App.css";
@@ -33,6 +34,7 @@ function App() {
           </>
         )}
       </Show>
+      <PreviewModal />
     </main>
   );
 }

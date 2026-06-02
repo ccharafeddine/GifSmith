@@ -37,3 +37,11 @@ export const [width, setWidth] = createSignal(480);
 
 /** gifski quality, 1-100. */
 export const [quality, setQuality] = createSignal(90);
+
+// --- Preview ---
+
+/** Temp path of the GIF awaiting preview, or null when no modal is open. */
+export const [previewPath, setPreviewPath] = createSignal<string | null>(null);
+
+/** Bumped on each export so the preview <img> reloads past the cache. */
+export const [previewVersion, setPreviewVersion] = createSignal(0);

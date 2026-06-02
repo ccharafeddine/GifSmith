@@ -1,7 +1,6 @@
 import { createSignal, Show } from "solid-js";
-import { save } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { exportGif } from "../ipc";
+import { exportPreview } from "../ipc";
 import {
   filePath,
   meta,
@@ -13,12 +12,13 @@ import {
   setWidth,
   quality,
   setQuality,
+  setPreviewPath,
+  setPreviewVersion,
 } from "../state";
 
 export default function ExportPanel() {
   const [exporting, setExporting] = createSignal(false);
   const [progress, setProgress] = createSignal(0);
-  const [status, setStatus] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
 
   // Output height, derived from source aspect at the chosen width (preview).
@@ -34,30 +34,15 @@ export default function ExportPanel() {
     const m = meta();
     if (!input || !m) return;
 
-    setStatus(null);
     setError(null);
-
-    let dest: string | null;
-    try {
-      dest = await save({
-        filters: [{ name: "GIF", extensions: ["gif"] }],
-        defaultPath: "export.gif",
-      });
-    } catch (e) {
-      setError(String(e));
-      return;
-    }
-    if (!dest) return; // user cancelled
-
     setProgress(0);
     setExporting(true);
     const unlisten = await listen<number>("export-progress", (e) =>
       setProgress(e.payload),
     );
     try {
-      await exportGif({
+      const tempPath = await exportPreview({
         inputPath: input,
-        outputPath: dest,
         startSecs: inPoint(),
         endSecs: outPoint(),
         fps: fps(),
@@ -66,7 +51,8 @@ export default function ExportPanel() {
         srcWidth: m.width,
         srcHeight: m.height,
       });
-      setStatus(`Saved to ${dest}`);
+      setPreviewVersion((v) => v + 1);
+      setPreviewPath(tempPath);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -134,9 +120,6 @@ export default function ExportPanel() {
           </div>
           <span class="progress-pct">{Math.round(progress() * 100)}%</span>
         </div>
-      </Show>
-      <Show when={status()}>
-        <p class="status">{status()}</p>
       </Show>
       <Show when={error()}>
         <p class="error">{error()}</p>

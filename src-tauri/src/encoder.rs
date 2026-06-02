@@ -35,7 +35,6 @@ pub enum EncodeError {
 #[serde(rename_all = "camelCase")]
 pub struct ExportParams {
     pub input_path: String,
-    pub output_path: String,
     pub start_secs: f64,
     pub end_secs: f64,
     pub fps: u32,
@@ -65,6 +64,7 @@ fn even(v: u32) -> u32 {
 pub fn export_gif(
     ffmpeg: &Path,
     params: &ExportParams,
+    output_path: &Path,
     on_progress: &dyn Fn(f64),
 ) -> Result<(), EncodeError> {
     let out_w = even(params.width);
@@ -125,7 +125,7 @@ pub fn export_gif(
     };
     let (collector, writer) = gifski::new(settings)?;
 
-    let output_path = params.output_path.clone();
+    let output_path = output_path.to_path_buf();
     let writer_thread = thread::spawn(move || -> Result<(), EncodeError> {
         let file = File::create(&output_path)?;
         let mut progress = NoProgress {};

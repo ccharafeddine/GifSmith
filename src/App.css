@@ -226,6 +226,42 @@
   transition: width 0.1s linear;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 10;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: min(90vw, 720px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.preview-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #1c1c1e;
+  border-radius: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }

@@ -14,7 +14,6 @@ export interface VideoMeta {
 /** Mirrors `ExportParams` in src-tauri/src/encoder.rs (camelCase over IPC). */
 export interface ExportParams {
   inputPath: string;
-  outputPath: string;
   startSecs: number;
   endSecs: number;
   fps: number;
@@ -29,7 +28,17 @@ export function probeVideo(path: string): Promise<VideoMeta> {
   return invoke<VideoMeta>("probe_video", { path });
 }
 
-/** Encode the selected slice to a GIF at params.outputPath. */
-export function exportGif(params: ExportParams): Promise<void> {
-  return invoke<void>("export_gif", { params });
+/** Encode the selected slice to a temp GIF; resolves to its path for preview. */
+export function exportPreview(params: ExportParams): Promise<string> {
+  return invoke<string>("export_preview", { params });
+}
+
+/** Move a previewed temp GIF to the user's chosen destination. */
+export function savePreview(tempPath: string, destPath: string): Promise<void> {
+  return invoke<void>("save_preview", { tempPath, destPath });
+}
+
+/** Delete a discarded preview temp GIF. */
+export function discardPreview(tempPath: string): Promise<void> {
+  return invoke<void>("discard_preview", { tempPath });
 }

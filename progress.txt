@@ -171,9 +171,30 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - Also per user: MIN_VIEW_SPAN 60 -> 30s (zoom can go tighter now).
   - Theming/look changes deferred to Step 15 per user preference.
 
+[Step 10] PreviewModal — 2026-06-02
+  - encoder::export_gif now takes output_path as a &Path arg (removed from
+    ExportParams, which is now just settings).
+  - commands: export_gif replaced by export_preview (encodes to
+    temp_dir/gifsmith-preview.gif, returns the path), save_preview (rename, or
+    copy+delete across drives), discard_preview (remove, NotFound ok). All in
+    generate_handler.
+  - ipc: exportPreview/savePreview/discardPreview; ExportParams lost outputPath.
+  - state: previewPath + previewVersion (cache-buster) signals. (~13 signals now;
+    consider a store during cleanup.)
+  - ExportPanel: Export -> exportPreview -> set previewPath (no save dialog here).
+    Progress bar still works during preview encode.
+  - PreviewModal.tsx: overlay showing <img convertFileSrc(temp)?v=ver>. Save
+    (save dialog -> save_preview -> close), Re-export (just close, temp reused),
+    Discard (discard_preview + close). Esc handling comes in Step 11.
+  - VERIFIED: cargo clippy -D warnings, cargo test (5/5), npm run build.
+  - DEFERRED: delete leftover temp preview on app close (CLAUDE.md). Add a
+    window close / Drop cleanup later. Single reused filename limits the mess.
+  - TO TEST: Export -> modal shows the GIF; Save writes it; Re-export returns;
+    Discard deletes. Re-export then export again should show the NEW gif (cache).
+
 == NEXT ==
 
-[Step 10] PreviewModal: export to OS temp, show result, Save / Re-export / Discard.
+[Step 11] Frame stepping + keyboard: arrows step, Space play, I/O set in/out, Esc.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

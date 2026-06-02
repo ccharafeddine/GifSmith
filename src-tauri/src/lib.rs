@@ -10,7 +10,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::probe_video,
-            commands::export_gif
+            commands::export_preview,
+            commands::save_preview,
+            commands::discard_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
