@@ -15,12 +15,26 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     (GUI window is blocking in this environment). User can run
     `npm run tauri dev` to see the blank window.
 
+[Step 2] FFmpeg sidecars (Windows done; macOS pending decision) — 2026-06-01
+  - scripts/fetch-ffmpeg.sh: downloads LGPL ffmpeg+ffprobe, places in
+    src-tauri/binaries/ with {name}-{target-triple} suffix. Idempotent, --force.
+  - Windows source: BtbN STATIC lgpl (ffmpeg-master-latest-win64-lgpl.zip),
+    single self-contained .exe, no DLLs. DEVIATION from build plan which said
+    "lgpl-shared": static is cleaner for a sidecar and still LGPL.
+  - Verified the binary: config has --enable-version3, --disable-libx264/x265,
+    NO --enable-gpl => LGPLv3. ffmpeg + ffprobe both run. ~166MB each.
+  - Wired bundle.externalBin: ["binaries/ffmpeg","binaries/ffprobe"].
+  - Binaries gitignored (/binaries/* except .gitkeep); CI must run fetch first.
+  - Verified host-triple files resolve for x86_64-pc-windows-msvc (no sidecar
+    error on dev build for this host). User can confirm with `npm run tauri dev`.
+  - OPEN: macOS LGPL source unresolved. evermeet.cx = GPL (libx264), violates
+    "LGPL only". No turnkey LGPL static macOS prebuilt found. fetch_macos()
+    currently skips. Decide before Step 16 (release). See question to user.
+
 == NEXT ==
 
-[Step 2] FFmpeg sidecars
-  - Write scripts/fetch-ffmpeg.sh (BtbN lgpl-shared for Windows, evermeet.cx for Mac).
-  - Place in src-tauri/binaries/ with {name}-{target-triple} suffix.
-  - Wire bundle.externalBin in tauri.conf.json.
+[Step 2-mac] Resolve macOS LGPL FFmpeg source (awaiting user decision).
+[Step 3] probe_video command (ffprobe JSON -> VideoMeta).
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.

@@ -1,0 +1,3 @@
+# FFmpeg + ffprobe sidecars land here, populated by scripts/fetch-ffmpeg.sh.
+# The binaries themselves are gitignored (LGPL, ~166MB each). CI runs the
+# fetch script before building. See CLAUDE.md "FFmpeg sidecars".
