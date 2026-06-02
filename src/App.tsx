@@ -79,8 +79,8 @@ function App() {
     <main class="container">
       <header class="app-header">
         <Logo />
-        <DropZone />
       </header>
+      <DropZone />
 
       <Show
         when={meta()}
@@ -91,7 +91,10 @@ function App() {
         }
       >
         {(m) => (
-          <div class="editor-single">
+          <div
+            class="editor-single"
+            style={{ "--aspect": `${m().width}/${m().height}` }}
+          >
             <p class="meta-line">
               <span class="filename">{basename(filePath() ?? "")}</span>
               {"  "}

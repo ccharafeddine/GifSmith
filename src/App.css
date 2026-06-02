@@ -30,10 +30,7 @@ body {
 
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s5);
-  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .empty-state {
@@ -54,14 +51,13 @@ body {
   gap: var(--s3);
 }
 
-/* Source loader (in the header) */
+/* Source loader (below the logo) */
 .loader {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--s2);
   flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
 }
 
 .loader.drag-over {
@@ -472,8 +468,13 @@ input {
 
 /* ---- Export panel ----------------------------------------------------- */
 
+/* Export panel sits below the video, matched to its width (min ~560px). */
 .export-panel {
-  margin-top: 0;
+  margin-top: var(--s2);
+  width: 100%;
+  max-width: max(560px, calc((100vh - 460px) * (var(--aspect))));
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .export-panel > button {
@@ -481,21 +482,16 @@ input {
   min-width: 200px;
 }
 
-/* Two settings per line, with short sliders. */
+/* Two settings per line; sliders flex to fill the column. */
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: 1fr 1fr;
   gap: var(--s2) var(--s5);
   margin-bottom: var(--s2);
 }
 
 .settings-grid .setting {
   margin-bottom: 0;
-}
-
-.settings-grid .setting input[type="range"] {
-  flex: 0 0 150px;
-  width: 150px;
 }
 
 .crop-toggle {
