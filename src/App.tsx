@@ -1,9 +1,16 @@
-import { Show } from "solid-js";
+import { Show, onMount, onCleanup } from "solid-js";
 import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
-import { filePath, meta } from "./state";
+import { filePath, meta, previewPath, setPreviewPath } from "./state";
+import {
+  togglePlayback,
+  stepFrame,
+  setInAtPlayhead,
+  setOutAtPlayhead,
+} from "./playback";
+import { discardPreview } from "./ipc";
 import { formatTimecode } from "./format";
 import "./App.css";
 
@@ -12,7 +19,61 @@ function basename(p: string): string {
   return parts[parts.length - 1] || p;
 }
 
+// True when the key event targets a typing/slider control we shouldn't hijack.
+function isFormControl(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return (
+    el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    el.tagName === "SELECT" ||
+    el.isContentEditable
+  );
+}
+
 function App() {
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Modal open: only Esc, which discards the preview and closes it.
+      if (previewPath()) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          const p = previewPath();
+          setPreviewPath(null);
+          if (p) void discardPreview(p).catch(() => undefined);
+        }
+        return;
+      }
+      if (isFormControl(e.target) || !meta()) return;
+
+      switch (e.key) {
+        case " ":
+          e.preventDefault();
+          togglePlayback();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          stepFrame(-1);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          stepFrame(1);
+          break;
+        case "i":
+        case "I":
+          setInAtPlayhead();
+          break;
+        case "o":
+        case "O":
+          setOutAtPlayhead();
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
+  });
+
   return (
     <main class="container">
       <h1>GifSmith</h1>

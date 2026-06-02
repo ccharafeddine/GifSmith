@@ -14,6 +14,7 @@ import {
   setViewEnd,
 } from "../state";
 import { formatTimecode } from "../format";
+import { togglePlayback } from "../playback";
 import Timeline from "./Timeline";
 
 /**
@@ -40,19 +41,6 @@ export default function VideoPlayer() {
     setViewStart(0);
     setViewEnd(dur);
   });
-
-  function togglePlay() {
-    if (!videoEl) return;
-    if (videoEl.paused) {
-      // Always start inside the selection.
-      if (videoEl.currentTime < inPoint() || videoEl.currentTime >= outPoint()) {
-        videoEl.currentTime = inPoint();
-      }
-      void videoEl.play();
-    } else {
-      videoEl.pause();
-    }
-  }
 
   function onTimeUpdate(t: number) {
     setCurrentTime(t);
@@ -86,7 +74,7 @@ export default function VideoPlayer() {
       />
       <Timeline />
       <div class="controls">
-        <button type="button" onClick={togglePlay}>
+        <button type="button" onClick={togglePlayback}>
           {playing() ? "Pause" : "Play"}
         </button>
         <span class="time">

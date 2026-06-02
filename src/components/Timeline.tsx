@@ -14,11 +14,8 @@ import {
   setViewEnd,
 } from "../state";
 import { formatTimecode } from "../format";
+import { MIN_SELECTION } from "../constants";
 
-// Smallest selectable clip, in seconds. Handles point outward (see App.css) so
-// they never overlap, which lets this be a small usability floor rather than a
-// grabbability constraint.
-const MIN_SELECTION = 1;
 // Most-zoomed-in state: the whole strip shows this many seconds.
 const MIN_VIEW_SPAN = 30;
 // Wheel zoom step.

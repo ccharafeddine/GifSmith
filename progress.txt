@@ -192,9 +192,22 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
   - TO TEST: Export -> modal shows the GIF; Save writes it; Re-export returns;
     Discard deletes. Re-export then export again should show the NEW gif (cache).
 
+[Step 11] Frame stepping + keyboard — 2026-06-02
+  - src/constants.ts: MIN_SELECTION (shared by Timeline + I/O keys).
+  - src/playback.ts: togglePlayback / stepFrame(+-1) / setInAtPlayhead /
+    setOutAtPlayhead, operating on shared state + videoEl. VideoPlayer's Play
+    button + the keyboard both use togglePlayback (dedup).
+  - App.tsx: window keydown listener (onMount/onCleanup). When modal open, only
+    Esc (discards preview + closes). Else, ignores typing/slider controls
+    (INPUT/TEXTAREA/SELECT/contentEditable), requires a loaded video, then:
+    Space=play/pause, Left/Right=step 1/source-fps, I=set IN, O=set OUT.
+  - VERIFIED: npm run build (TS ok, 21 modules). Frontend-only, HMR'd live.
+  - TO TEST: Space toggles play; arrows step a frame (pauses); I/O set in/out at
+    playhead; Esc closes the preview modal. Sliders still take arrows natively.
+
 == NEXT ==
 
-[Step 11] Frame stepping + keyboard: arrows step, Space play, I/O set in/out, Esc.
+[Step 12] Crop overlay: draggable/resizable rect in source px, feed crop= filter.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
