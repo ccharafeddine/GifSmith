@@ -118,7 +118,8 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
     save dialog, exporting/status/error states); fixed MVP 15fps / 480px.
   - VERIFIED: cargo build, clippy -D warnings, cargo test (5/5, incl even()),
     npm run build. Frame math + threading compile clean.
-  - RUNTIME TO TEST: pick selection -> Export GIF -> save -> open the .gif.
+  - RUNTIME VERIFIED 2026-06-02: user exported a real .gif successfully. The
+    full ffmpeg -> raw RGBA -> gifski -> file pipeline works end to end.
   - KNOWN RISK: videos with rotation metadata (portrait phone clips) may have
     ffprobe stored dims != decoded dims, desyncing frame size. Test a normal
     landscape clip first; handle rotation later if needed.
@@ -142,8 +143,8 @@ Build plan reference: see CLAUDE.md "Build plan" (17 steps).
 == NEXT ==
 
 [Step 8] ExportPanel sliders: FPS (5-30), width (240-1080), quality (1-100).
-NOTE: Step 7 export still needs a runtime confirmation (user pivoted to zoom
-before confirming a .gif was produced).
+  - Needs a Rust change: add `quality` to ExportParams + thread into gifski
+    Settings (currently hardcoded default). FPS/width already flow through.
 
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
