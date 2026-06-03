@@ -340,6 +340,31 @@ input[type="range"]:focus {
   pointer-events: none;
 }
 
+/* Shown over the stage when the webview can't decode the codec. */
+.stage-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s5);
+  text-align: center;
+  color: var(--fg-2);
+  background: var(--bg-base);
+}
+
+.stage-msg p {
+  margin: 0;
+  max-width: 36ch;
+}
+
+.stage-msg-sub {
+  font-size: var(--fs-num);
+  color: var(--fg-3);
+}
+
 .crop-rect {
   position: absolute;
   left: var(--cl);
@@ -587,7 +612,7 @@ input[type="range"]:focus {
 }
 
 .export-metrics.caution {
-  color: var(--accent-2);
+  color: var(--danger);
 }
 
 .preview-size {

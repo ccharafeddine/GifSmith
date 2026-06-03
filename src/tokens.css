@@ -20,9 +20,9 @@
   --accent-fg: #ffffff;
   --trim: var(--accent); /* timeline handles read this */
 
-  /* Secondary accent: bright orange/amber. The "Smith" in the wordmark, the
-     export-optimization cluster (presets + readout), and over-target cautions. */
-  --accent-2: #ffae1f;
+  /* Secondary accent: electric cyan (the synthwave pair to violet). The "Smith"
+     in the wordmark and the export presets. (Over-target caution uses --danger.) */
+  --accent-2: #2ce5e5;
   --accent-2-fg: #0a0a0a;
 
   /* One signature gradient. Export GIF button fill + the "Gif" wordmark only. */

@@ -1,4 +1,4 @@
-import { createEffect } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   filePath,
@@ -35,6 +35,10 @@ import CropOverlay from "./CropOverlay";
  * an iOS-style trim Timeline. Loop/boomerang logic lives in ../playback.
  */
 export default function VideoPlayer() {
+  // True when the webview can't decode this file's codec (e.g. HEVC/ProRes);
+  // ffmpeg still handles the filmstrip, trimming, and export.
+  const [unsupported, setUnsupported] = createSignal(false);
+
   const src = () => {
     const p = filePath();
     return p ? convertFileSrc(p) : "";
@@ -44,6 +48,7 @@ export default function VideoPlayer() {
   createEffect(() => {
     const m = meta();
     const dur = m ? m.duration_secs : 0;
+    setUnsupported(false);
     resetPlayback();
     setCurrentTime(0);
     setInPoint(0);
@@ -78,7 +83,17 @@ export default function VideoPlayer() {
           src={src()}
           onTimeUpdate={(e) => onPlaybackTime(e.currentTarget.currentTime)}
           onEnded={onPlaybackEnded}
+          onError={() => setUnsupported(true)}
         />
+        <Show when={unsupported()}>
+          <div class="stage-msg">
+            <p>Can't preview this codec in the window (e.g. HEVC / ProRes).</p>
+            <p class="stage-msg-sub">
+              Trimming and export still work, the timeline thumbnails and the
+              GIF are built with FFmpeg.
+            </p>
+          </div>
+        </Show>
         <CropOverlay />
       </div>
       <Timeline />
