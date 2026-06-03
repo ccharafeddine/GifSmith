@@ -129,7 +129,7 @@ body {
 
 .logo-smith {
   font-weight: 600;
-  color: var(--fg-2);
+  color: var(--accent-2);
 }
 
 /* ---- Controls --------------------------------------------------------- */

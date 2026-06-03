@@ -83,7 +83,7 @@ export default function ExportPanel() {
   // shown after export. ~bytes per output pixel-frame, scaled by quality.
   const estBytes = () => {
     const ow = Math.floor(width() / 2) * 2;
-    const factor = 0.1 + (quality() / 100) * 0.25;
+    const factor = 0.12 + (quality() / 100) * 0.3;
     return frameCount() * ow * outHeight() * factor;
   };
 

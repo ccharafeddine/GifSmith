@@ -16,17 +16,17 @@
   --fg-3: #5e5e5e; /* tertiary, dim-gray */
 
   /* Accent: electric violet. Primary (also the trim handles). */
-  --accent: #9d7bff;
+  --accent: #a974ff;
   --accent-fg: #ffffff;
   --trim: var(--accent); /* timeline handles read this */
 
-  /* Secondary accent: amber. Used for the export-optimization cluster
-     (presets + the size/frame readout) and over-target cautions. */
-  --accent-2: #ffb84d;
+  /* Secondary accent: bright orange/amber. The "Smith" in the wordmark, the
+     export-optimization cluster (presets + readout), and over-target cautions. */
+  --accent-2: #ffae1f;
   --accent-2-fg: #0a0a0a;
 
   /* One signature gradient. Export GIF button fill + the "Gif" wordmark only. */
-  --grad: linear-gradient(135deg, #b9a3ff 0%, #9d7bff 50%, #7a4dff 100%);
+  --grad: linear-gradient(135deg, #c6acff 0%, #a974ff 50%, #8a4dff 100%);
 
   /* Borders (hairline) */
   --border: #262626;
