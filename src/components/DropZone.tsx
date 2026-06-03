@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { probeVideo, downloadVideo, generateFilmstrip } from "../ipc";
-import { setFilePath, setMeta, setFilmstripSrc } from "../state";
+import { setFilePath, setMeta, setFilmstripSrc, videoEl } from "../state";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
 const VIDEO_EXTENSIONS = ["mp4", "mov", "mkv", "webm", "avi", "m4v"];
@@ -27,6 +27,13 @@ export default function DropZone() {
 
   // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
+    // Release the previously-open source so it's no longer locked on disk.
+    const v = videoEl();
+    if (v) {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+    }
     setLoading(true);
     setError(null);
     setFilePath(path);
