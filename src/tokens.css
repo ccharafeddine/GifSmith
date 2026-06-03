@@ -22,8 +22,8 @@
 
   /* Secondary accent: electric cyan (the synthwave pair to violet). The "Smith"
      in the wordmark and the export presets. (Over-target caution uses --danger.) */
-  --accent-2: #2ce5e5;
-  --accent-2-fg: #0a0a0a;
+  --accent-2: #45f2f2;
+  --accent-2-fg: #062020;
 
   /* One signature gradient. Export GIF button fill + the "Gif" wordmark only. */
   --grad: linear-gradient(135deg, #c6acff 0%, #a974ff 50%, #8a4dff 100%);

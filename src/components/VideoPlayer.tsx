@@ -109,6 +109,10 @@ export default function VideoPlayer() {
           onTimeUpdate={(e) => onPlaybackTime(e.currentTarget.currentTime)}
           onEnded={onPlaybackEnded}
           onError={onVideoError}
+          onLoadedMetadata={(e) => {
+            // Some codecs "load" but decode to nothing (videoWidth 0): proxy it.
+            if (e.currentTarget.videoWidth === 0) onVideoError();
+          }}
         />
         <Show when={proxyBuilding()}>
           <div class="stage-msg">

@@ -167,11 +167,13 @@ button.primary {
   border-color: transparent;
   color: var(--accent-fg);
   font-weight: 700;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 button.primary:hover:not(:disabled) {
   filter: brightness(1.08);
   color: var(--accent-fg);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 48%, transparent);
 }
 
 /* The one signature gradient: Export GIF button fill only. */
@@ -212,12 +214,15 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--fg);
   border: 2px solid var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
   transition: box-shadow 0.15s;
 }
 
 input[type="range"]:hover::-webkit-slider-thumb,
 input[type="range"]:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 input[type="range"]::-moz-range-track {
@@ -598,6 +603,7 @@ input[type="range"]:focus {
   background: var(--accent-2);
   border-color: var(--accent-2);
   color: var(--accent-2-fg);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-2) 40%, transparent);
 }
 
 /* Frame count + estimated size by the Export button. */
