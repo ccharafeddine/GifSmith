@@ -377,6 +377,20 @@ Remaining polish/todos:
     (filled portion in accent via per-slider --val) + thumb (fg dot, accent
     ring, hover glow); ExportPanel sets --val=pctOf(value). Verified no
     googleapis/gstatic; npm build clean.
+  - Export presets + metrics + secondary color 2026-06-02 (user):
+    * Violet brightened (#8b5cff -> #9d7bff). Added SECONDARY accent --accent-2
+      (amber #ffb84d) for the export-optimization cluster (presets + readout).
+    * Presets row "Optimize for": Web/GIPHY/X/Discord chips set width/fps/quality
+      + a size limit; active chip = amber; editing a slider clears it (still fully
+      customizable). PRESETS array in ExportPanel.
+    * Metrics by Export button: frame count (exact; boomerang = 2n-2) + rough
+      size estimate (~bytes/px-frame by quality). Turns amber (.caution) when
+      frames > 200 (GIPHY) or est > the preset's MB limit.
+    * Actual size after export: export_preview now returns {path, bytes}
+      (PreviewResult); previewBytes state; PreviewModal shows real size.
+    * VERIFIED: cargo clippy -D warnings, npm build.
+    * NOTE: size estimate is rough (GIF size is content-dependent); actual shown
+      post-export. Estimate factor tunable.
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

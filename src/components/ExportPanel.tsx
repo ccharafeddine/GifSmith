@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import { exportPreview } from "../ipc";
 import {
@@ -16,6 +16,7 @@ import {
   setSpeed,
   setPreviewPath,
   setPreviewVersion,
+  setPreviewBytes,
   cropEnabled,
   setCropEnabled,
   crop,
@@ -28,17 +29,68 @@ import {
   setBoomerang,
 } from "../state";
 
+const MB = 1024 ** 2;
 const RAM_WARN_BYTES = 2 * 1024 ** 3; // 2 GB
+const FRAME_WARN = 200; // GIPHY recommends fewer than 200 frames
+
+// Per-platform recommended settings + a size target for the readout.
+interface Preset {
+  name: string;
+  width: number;
+  fps: number;
+  quality: number;
+  limitMb: number;
+}
+const PRESETS: Preset[] = [
+  { name: "Web", width: 480, fps: 12, quality: 80, limitMb: 8 },
+  { name: "GIPHY", width: 480, fps: 15, quality: 88, limitMb: 8 },
+  { name: "X", width: 640, fps: 24, quality: 90, limitMb: 15 },
+  { name: "Discord", width: 540, fps: 20, quality: 88, limitMb: 10 },
+];
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
   return `${Math.round(bytes / 1024 ** 2)} MB`;
 }
 
+function formatSize(bytes: number): string {
+  const mb = bytes / MB;
+  return mb >= 100 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
+}
+
 export default function ExportPanel() {
   const [exporting, setExporting] = createSignal(false);
   const [progress, setProgress] = createSignal(0);
   const [error, setError] = createSignal<string | null>(null);
+  const [activePreset, setActivePreset] = createSignal<string | null>(null);
+  const [limitMb, setLimitMb] = createSignal<number | null>(null);
+
+  function applyPreset(p: Preset) {
+    setWidth(p.width);
+    setFps(p.fps);
+    setQuality(p.quality);
+    setLimitMb(p.limitMb);
+    setActivePreset(p.name);
+  }
+
+  // Output frame count (boomerang adds the reversed pass, minus the two seams).
+  const frameCount = () => {
+    const base = Math.max(1, Math.round((outPoint() - inPoint()) * fps()));
+    return boomerang() ? Math.max(1, 2 * base - 2) : base;
+  };
+
+  // Rough size estimate (GIF size is very content-dependent). The real size is
+  // shown after export. ~bytes per output pixel-frame, scaled by quality.
+  const estBytes = () => {
+    const ow = Math.floor(width() / 2) * 2;
+    const factor = 0.1 + (quality() / 100) * 0.25;
+    return frameCount() * ow * outHeight() * factor;
+  };
+
+  const overTarget = () => {
+    const l = limitMb();
+    return frameCount() > FRAME_WARN || (l != null && estBytes() > l * MB);
+  };
 
   // Effective input dimensions: the crop region when cropping, else the source.
   const inputDims = () => {
@@ -134,7 +186,7 @@ export default function ExportPanel() {
       setProgress(e.payload),
     );
     try {
-      const tempPath = await exportPreview({
+      const res = await exportPreview({
         inputPath: input,
         startSecs: inPoint(),
         endSecs: outPoint(),
@@ -148,7 +200,8 @@ export default function ExportPanel() {
         boomerang: boomerang(),
       });
       setPreviewVersion((v) => v + 1);
-      setPreviewPath(tempPath);
+      setPreviewBytes(res.bytes);
+      setPreviewPath(res.path);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -159,6 +212,22 @@ export default function ExportPanel() {
 
   return (
     <section class="export-panel">
+      <div class="presets">
+        <span class="presets-label">Optimize for</span>
+        <For each={PRESETS}>
+          {(p) => (
+            <button
+              type="button"
+              class="preset"
+              classList={{ active: activePreset() === p.name }}
+              onClick={() => applyPreset(p)}
+            >
+              {p.name}
+            </button>
+          )}
+        </For>
+      </div>
+
       <label class="crop-toggle">
         <input
           type="checkbox"
@@ -225,7 +294,10 @@ export default function ExportPanel() {
           step={1}
           value={fps()}
           style={{ "--val": pctOf(fps(), 5, 30) }}
-          onInput={(e) => setFps(e.currentTarget.valueAsNumber)}
+          onInput={(e) => {
+            setActivePreset(null);
+            setFps(e.currentTarget.valueAsNumber);
+          }}
         />
         <span class="setting-value">{fps()}</span>
       </div>
@@ -240,7 +312,10 @@ export default function ExportPanel() {
           step={10}
           value={width()}
           style={{ "--val": pctOf(width(), 240, 1080) }}
-          onInput={(e) => setWidth(e.currentTarget.valueAsNumber)}
+          onInput={(e) => {
+            setActivePreset(null);
+            setWidth(e.currentTarget.valueAsNumber);
+          }}
         />
         <span class="setting-value">
           {width()}&times;{outHeight()}
@@ -257,7 +332,10 @@ export default function ExportPanel() {
           step={1}
           value={quality()}
           style={{ "--val": pctOf(quality(), 1, 100) }}
-          onInput={(e) => setQuality(e.currentTarget.valueAsNumber)}
+          onInput={(e) => {
+            setActivePreset(null);
+            setQuality(e.currentTarget.valueAsNumber);
+          }}
         />
         <span class="setting-value">{quality()}</span>
       </div>
@@ -277,6 +355,15 @@ export default function ExportPanel() {
         <span class="setting-value">{speed().toFixed(2)}x</span>
         </div>
       </div>
+
+      <p class="export-metrics" classList={{ caution: overTarget() }}>
+        <Show when={meta()} fallback="">
+          {frameCount()} frames &middot; ~{formatSize(estBytes())} est.
+          <Show when={limitMb()}>
+            {(l) => <span> &middot; limit {l()} MB</span>}
+          </Show>
+        </Show>
+      </p>
 
       <button
         type="button"

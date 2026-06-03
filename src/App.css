@@ -544,6 +544,60 @@ input[type="range"]:focus {
   min-width: 200px;
 }
 
+/* Optimize-for presets (secondary amber accent). */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.presets-label {
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-2);
+}
+
+.preset {
+  padding: var(--s1) var(--s3);
+  border-radius: 999px;
+  font-size: var(--fs-label);
+  letter-spacing: 0.03em;
+}
+
+.preset.active,
+.preset.active:hover:not(:disabled) {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--accent-2-fg);
+}
+
+/* Frame count + estimated size by the Export button. */
+.export-metrics {
+  margin: var(--s3) 0 0;
+  min-height: 1.2em;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+.export-metrics.caution {
+  color: var(--accent-2);
+}
+
+.preview-size {
+  margin: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+  font-size: var(--fs-num);
+}
+
 /* Two settings per line; sliders flex to fill the column. */
 .settings-grid {
   display: grid;

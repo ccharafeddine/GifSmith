@@ -55,6 +55,9 @@ export const [previewPath, setPreviewPath] = createSignal<string | null>(null);
 /** Bumped on each export so the preview <img> reloads past the cache. */
 export const [previewVersion, setPreviewVersion] = createSignal(0);
 
+/** Byte size of the most recent export (shown in the preview). */
+export const [previewBytes, setPreviewBytes] = createSignal(0);
+
 // --- Crop (source pixel coordinates) ---
 
 export interface CropRect {

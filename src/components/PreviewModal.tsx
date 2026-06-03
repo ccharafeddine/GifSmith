@@ -2,7 +2,17 @@ import { createSignal, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { savePreview, discardPreview } from "../ipc";
-import { previewPath, setPreviewPath, previewVersion } from "../state";
+import {
+  previewPath,
+  setPreviewPath,
+  previewVersion,
+  previewBytes,
+} from "../state";
+
+function formatSize(bytes: number): string {
+  const mb = bytes / 1024 ** 2;
+  return mb >= 100 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
+}
 
 /**
  * Shows the just-encoded GIF (from the OS temp dir) and lets the user commit
@@ -62,6 +72,7 @@ export default function PreviewModal() {
       <div class="modal-overlay">
         <div class="modal">
           <img class="preview-img" src={src()} alt="GIF preview" />
+          <p class="preview-size">{formatSize(previewBytes())}</p>
           <Show when={error()}>
             <p class="error">{error()}</p>
           </Show>

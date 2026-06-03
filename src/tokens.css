@@ -15,13 +15,18 @@
   --fg-2: #9a9a9a; /* secondary, mid-gray */
   --fg-3: #5e5e5e; /* tertiary, dim-gray */
 
-  /* Accent: electric violet. Single accent (also the trim handles). */
-  --accent: #8b5cff;
+  /* Accent: electric violet. Primary (also the trim handles). */
+  --accent: #9d7bff;
   --accent-fg: #ffffff;
   --trim: var(--accent); /* timeline handles read this */
 
+  /* Secondary accent: amber. Used for the export-optimization cluster
+     (presets + the size/frame readout) and over-target cautions. */
+  --accent-2: #ffb84d;
+  --accent-2-fg: #0a0a0a;
+
   /* One signature gradient. Export GIF button fill + the "Gif" wordmark only. */
-  --grad: linear-gradient(135deg, #a98bff 0%, #8b5cff 50%, #6d3cff 100%);
+  --grad: linear-gradient(135deg, #b9a3ff 0%, #9d7bff 50%, #7a4dff 100%);
 
   /* Borders (hairline) */
   --border: #262626;

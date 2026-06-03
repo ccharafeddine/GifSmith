@@ -77,8 +77,17 @@ pub async fn probe_video(app: AppHandle, path: String) -> Result<VideoMeta, Stri
 /// # Errors
 /// Returns a user-facing message if ffmpeg can't be located or run, or if
 /// encoding fails.
+#[derive(serde::Serialize)]
+pub struct PreviewResult {
+    pub path: String,
+    pub bytes: u64,
+}
+
 #[tauri::command]
-pub async fn export_preview(app: AppHandle, params: ExportParams) -> Result<String, String> {
+pub async fn export_preview(
+    app: AppHandle,
+    params: ExportParams,
+) -> Result<PreviewResult, String> {
     let ffmpeg = ffmpeg_path().map_err(|e| format!("could not locate ffmpeg: {e}"))?;
     let temp = preview_path();
     let out = temp.clone();
@@ -92,7 +101,11 @@ pub async fn export_preview(app: AppHandle, params: ExportParams) -> Result<Stri
     .await
     .map_err(|e| format!("export task failed to run: {e}"))?
     .map_err(|e| e.to_string())?;
-    Ok(temp.to_string_lossy().into_owned())
+    let bytes = std::fs::metadata(&temp).map(|m| m.len()).unwrap_or(0);
+    Ok(PreviewResult {
+        path: temp.to_string_lossy().into_owned(),
+        bytes,
+    })
 }
 
 /// Move a preview GIF from the temp dir to the user's chosen path.

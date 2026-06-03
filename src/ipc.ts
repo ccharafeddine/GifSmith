@@ -52,9 +52,15 @@ export function generateFilmstrip(
   return invoke<string>("generate_filmstrip", { path, durationSecs });
 }
 
-/** Encode the selected slice to a temp GIF; resolves to its path for preview. */
-export function exportPreview(params: ExportParams): Promise<string> {
-  return invoke<string>("export_preview", { params });
+/** Result of an export: temp path and output size in bytes. */
+export interface PreviewResult {
+  path: string;
+  bytes: number;
+}
+
+/** Encode the selected slice to a temp GIF; resolves to its path + size. */
+export function exportPreview(params: ExportParams): Promise<PreviewResult> {
+  return invoke<PreviewResult>("export_preview", { params });
 }
 
 /** Move a previewed temp GIF to the user's chosen destination. */
