@@ -370,6 +370,13 @@ Remaining polish/todos:
       .settings-grid with short fixed-width sliders (150px). Header = logo +
       compact loader row. .player height budget bumped to (100vh-460px)*aspect.
     * VERIFIED: cargo clippy -D warnings, npm build. (460px overhead tunable.)
+  - Restyle 2026-06-02 (user): accent yellow -> ELECTRIC VIOLET (#8b5cff,
+    --accent/--trim; gradient violet; accent-fg white). Font -> SYNE everywhere
+    (vendored src/assets/fonts/syne-400..800.woff2 + OFL; removed Space
+    Grotesk/Mono). Wordmark Gif 800 / Smith 600. Sliders upgraded: custom track
+    (filled portion in accent via per-slider --val) + thumb (fg dot, accent
+    ring, hover glow); ExportPanel sets --val=pctOf(value). Verified no
+    googleapis/gstatic; npm build clean.
   - NEXT (graphics): optional flourishes only; core look + branding done.
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

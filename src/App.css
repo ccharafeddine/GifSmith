@@ -119,7 +119,7 @@ body {
 }
 
 .logo-gif {
-  font-weight: 700;
+  font-weight: 800;
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
@@ -128,7 +128,7 @@ body {
 }
 
 .logo-smith {
-  font-weight: 400;
+  font-weight: 600;
   color: var(--fg-2);
 }
 
@@ -181,6 +181,67 @@ button.export {
 
 input {
   accent-color: var(--accent);
+}
+
+/* ---- Sliders: custom track + thumb ------------------------------------
+   --val (0-100%) is set per slider so the filled portion shows in the accent.
+   Webview is Chromium / WebKit, so -webkit/-moz pseudo-elements cover it. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--val, 0%),
+    var(--bg-control) var(--val, 0%)
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--fg);
+  border: 2px solid var(--accent);
+  transition: box-shadow 0.15s;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-control);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--fg);
+}
+
+input[type="range"]:focus {
+  outline: none;
 }
 
 .error {

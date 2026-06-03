@@ -1,32 +1,38 @@
-/* Self-hosted fonts. Bundled as woff2 in src/assets/fonts (no CDN, fully
-   offline). Licenses: Space Grotesk (OFL) and Space Mono (OFL) ship alongside
-   the files in src/assets/fonts. */
+/* Self-hosted Syne (SIL OFL). Bundled as woff2 in src/assets/fonts (no CDN,
+   fully offline). License ships alongside the files. Used across the whole app. */
 
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "Syne";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./assets/fonts/space-grotesk-400.woff2") format("woff2");
+  src: url("./assets/fonts/syne-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "Syne";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("./assets/fonts/space-grotesk-500.woff2") format("woff2");
+  src: url("./assets/fonts/syne-500.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: "Syne";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./assets/fonts/syne-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Syne";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url("./assets/fonts/space-grotesk-700.woff2") format("woff2");
+  src: url("./assets/fonts/syne-700.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Space Mono";
+  font-family: "Syne";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 800;
   font-display: swap;
-  src: url("./assets/fonts/space-mono-400.woff2") format("woff2");
+  src: url("./assets/fonts/syne-800.woff2") format("woff2");
 }

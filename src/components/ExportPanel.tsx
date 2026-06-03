@@ -49,6 +49,10 @@ export default function ExportPanel() {
   };
 
   // Output height, derived from the input aspect at the chosen width (preview).
+  // Filled-track percent for a slider value (drives the --val CSS var).
+  const pctOf = (v: number, min: number, max: number) =>
+    `${((v - min) / (max - min)) * 100}%`;
+
   const outHeight = () => {
     const d = inputDims();
     if (d.w === 0) return 0;
@@ -220,6 +224,7 @@ export default function ExportPanel() {
           max={30}
           step={1}
           value={fps()}
+          style={{ "--val": pctOf(fps(), 5, 30) }}
           onInput={(e) => setFps(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">{fps()}</span>
@@ -234,6 +239,7 @@ export default function ExportPanel() {
           max={1080}
           step={10}
           value={width()}
+          style={{ "--val": pctOf(width(), 240, 1080) }}
           onInput={(e) => setWidth(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">
@@ -250,6 +256,7 @@ export default function ExportPanel() {
           max={100}
           step={1}
           value={quality()}
+          style={{ "--val": pctOf(quality(), 1, 100) }}
           onInput={(e) => setQuality(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">{quality()}</span>
@@ -264,6 +271,7 @@ export default function ExportPanel() {
           max={2}
           step={0.25}
           value={speed()}
+          style={{ "--val": pctOf(speed(), 0.5, 2) }}
           onInput={(e) => setSpeed(e.currentTarget.valueAsNumber)}
         />
         <span class="setting-value">{speed().toFixed(2)}x</span>
