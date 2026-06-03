@@ -44,6 +44,11 @@ export function downloadVideo(url: string): Promise<string> {
   return invoke<string>("download_video", { url });
 }
 
+/** Transcode an H.264 playback proxy for an unsupported codec; resolves to its path. */
+export function generateProxy(path: string): Promise<string> {
+  return invoke<string>("generate_proxy", { path });
+}
+
 /** Build a timeline thumbnail strip; resolves to a PNG data URI. */
 export function generateFilmstrip(
   path: string,

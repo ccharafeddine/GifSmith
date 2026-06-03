@@ -1,5 +1,6 @@
 import { createEffect, createSignal, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { generateProxy } from "../ipc";
 import {
   filePath,
   meta,
@@ -35,20 +36,44 @@ import CropOverlay from "./CropOverlay";
  * an iOS-style trim Timeline. Loop/boomerang logic lives in ../playback.
  */
 export default function VideoPlayer() {
-  // True when the webview can't decode this file's codec (e.g. HEVC/ProRes);
-  // ffmpeg still handles the filmstrip, trimming, and export.
-  const [unsupported, setUnsupported] = createSignal(false);
+  // When the webview can't decode the file's codec (e.g. HEVC/ProRes), ffmpeg
+  // transcodes a lightweight H.264 proxy that playback uses instead. Export
+  // always uses the original.
+  const [proxySrc, setProxySrc] = createSignal<string | null>(null);
+  const [proxyBuilding, setProxyBuilding] = createSignal(false);
+  const [proxyFailed, setProxyFailed] = createSignal(false);
 
   const src = () => {
+    const proxy = proxySrc();
+    if (proxy) return proxy;
     const p = filePath();
     return p ? convertFileSrc(p) : "";
   };
+
+  function onVideoError() {
+    // Already showing a proxy and it still errors: give up.
+    if (proxySrc()) {
+      setProxyFailed(true);
+      return;
+    }
+    if (proxyBuilding()) return;
+    const p = filePath();
+    if (!p) return;
+    setProxyBuilding(true);
+    setProxyFailed(false);
+    generateProxy(p)
+      .then((proxyPath) => setProxySrc(convertFileSrc(proxyPath)))
+      .catch(() => setProxyFailed(true))
+      .finally(() => setProxyBuilding(false));
+  }
 
   // New source: reset transport, trim, zoom, crop, and bounce to defaults.
   createEffect(() => {
     const m = meta();
     const dur = m ? m.duration_secs : 0;
-    setUnsupported(false);
+    setProxySrc(null);
+    setProxyBuilding(false);
+    setProxyFailed(false);
     resetPlayback();
     setCurrentTime(0);
     setInPoint(0);
@@ -83,9 +108,18 @@ export default function VideoPlayer() {
           src={src()}
           onTimeUpdate={(e) => onPlaybackTime(e.currentTarget.currentTime)}
           onEnded={onPlaybackEnded}
-          onError={() => setUnsupported(true)}
+          onError={onVideoError}
         />
-        <Show when={unsupported()}>
+        <Show when={proxyBuilding()}>
+          <div class="stage-msg">
+            <p>Preparing preview...</p>
+            <p class="stage-msg-sub">
+              Transcoding a lightweight copy so this codec plays here. Export
+              uses the original.
+            </p>
+          </div>
+        </Show>
+        <Show when={proxyFailed()}>
           <div class="stage-msg">
             <p>Can't preview this codec in the window (e.g. HEVC / ProRes).</p>
             <p class="stage-msg-sub">

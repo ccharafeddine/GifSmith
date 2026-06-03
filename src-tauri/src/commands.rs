@@ -26,11 +26,25 @@ fn filmstrip_path() -> PathBuf {
     std::env::temp_dir().join("gifsmith-filmstrip.png")
 }
 
+/// Remove any leftover playback-proxy files (uniquely named, so glob by prefix).
+fn remove_proxy_files() {
+    if let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("gifsmith-proxy") && name.ends_with(".mp4") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
 /// Best-effort removal of all temp files GifSmith may have written. Call on exit.
 pub fn cleanup_temp() {
     let _ = std::fs::remove_file(preview_path());
     let _ = std::fs::remove_file(filmstrip_path());
     let _ = std::fs::remove_dir_all(download_dir());
+    remove_proxy_files();
 }
 
 /// Probe a local video file with the bundled `ffprobe` sidecar and return its
@@ -217,6 +231,57 @@ pub async fn generate_filmstrip(
     let bytes = std::fs::read(&temp).map_err(|e| format!("could not read filmstrip: {e}"))?;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
     Ok(format!("data:image/png;base64,{b64}"))
+}
+
+/// Transcode a lightweight H.264 proxy (libopenh264, ~640px) for codecs the
+/// webview can't decode (HEVC, ProRes, ...). Playback uses this proxy; export
+/// still uses the original. Returns the proxy file path. Full decode, so it's
+/// slow on long videos.
+///
+/// # Errors
+/// Returns a user-facing message if ffmpeg can't be located or transcoding fails.
+#[tauri::command]
+pub async fn generate_proxy(app: AppHandle, path: String) -> Result<String, String> {
+    remove_proxy_files();
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let out = std::env::temp_dir().join(format!("gifsmith-proxy-{nanos}.mp4"));
+    let out_str = out.to_string_lossy().into_owned();
+
+    let output = app
+        .shell()
+        .sidecar("ffmpeg")
+        .map_err(|e| format!("could not locate ffmpeg: {e}"))?
+        .args([
+            "-y",
+            "-v",
+            "error",
+            "-an",
+            "-i",
+            &path,
+            "-vf",
+            "scale=640:-2",
+            "-c:v",
+            "libopenh264",
+            "-b:v",
+            "2500k",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            &out_str,
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("ffmpeg failed to start: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("could not build preview: {}", stderr.trim()));
+    }
+    Ok(out_str)
 }
 
 /// Download a video from a URL with the bundled `yt-dlp` sidecar into the OS

@@ -11,6 +11,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::probe_video,
             commands::generate_filmstrip,
+            commands::generate_proxy,
             commands::download_video,
             commands::export_preview,
             commands::save_preview,

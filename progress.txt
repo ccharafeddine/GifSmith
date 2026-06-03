@@ -391,7 +391,18 @@ Remaining polish/todos:
     * VERIFIED: cargo clippy -D warnings, npm build.
     * NOTE: size estimate is rough (GIF size is content-dependent); actual shown
       post-export. Estimate factor tunable.
-  - NEXT (graphics): optional flourishes only; core look + branding done.
+  - Proxy preview 2026-06-03 (user): codecs the webview can't play (HEVC/ProRes
+    .mov) now get a playback proxy. commands::generate_proxy transcodes a ~640px
+    H.264 (libopenh264 - our LGPL ffmpeg HAS it; no x264) mp4 to temp with a
+    unique name; cleanup_temp + generate_proxy glob-remove gifsmith-proxy*.mp4.
+    VideoPlayer: on <video> onError, build proxy (proxyBuilding overlay
+    "Preparing preview..."), swap src to proxySrc when ready; proxyFailed shows
+    the can't-preview message. Export still uses the original. Crop maps fine
+    (proxy keeps source aspect). Slow on long videos (full decode).
+  - Secondary color = electric CYAN (#2ce5e5, synthwave pair to violet); "Smith"
+    + presets cyan; over-limit caution -> red. Violet/orange brightened earlier.
+  - VERIFIED: cargo clippy -D warnings, npm build.
+  - NEXT: optional. App icon still old gold (offered to recolor to violet/cyan).
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.
   - DONE 2026-06-02: app-close temp cleanup. lib.rs uses .build().run() and on
