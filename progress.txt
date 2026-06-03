@@ -402,6 +402,13 @@ Remaining polish/todos:
   - Secondary color = electric CYAN (#2ce5e5, synthwave pair to violet); "Smith"
     + presets cyan; over-limit caution -> red. Violet/orange brightened earlier.
   - VERIFIED: cargo clippy -D warnings, npm build.
+  - Rotation crop fix 2026-06-03 (user): cropping a rotated .mov exported a
+    zoomed/offset region. Cause: ffprobe reports CODED dims but ffmpeg
+    auto-rotates on decode, so the crop overlay (coded coords) didn't match the
+    exported (rotated) frame. probe.rs now reports DISPLAY dims: detects 90/270
+    rotation from tags.rotate or side_data Display Matrix and swaps width/height.
+    Everything (stage, overlay, crop, export) now shares the display coord
+    system. Tests: swap on 90, keep on 180. clippy + 7 tests pass.
   - NEXT: optional. App icon still old gold (offered to recolor to violet/cyan).
   - Runtime-confirm: crop export, drag-drop, preview save/discard (others ok).
   - Trigger release CI with a v* tag when ready.

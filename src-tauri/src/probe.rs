@@ -46,12 +46,43 @@ struct FfprobeStream {
     r_frame_rate: Option<String>,
     avg_frame_rate: Option<String>,
     duration: Option<String>,
+    tags: Option<StreamTags>,
+    side_data_list: Option<Vec<SideData>>,
+}
+
+#[derive(Deserialize)]
+struct StreamTags {
+    rotate: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SideData {
+    rotation: Option<f64>,
 }
 
 #[derive(Deserialize)]
 struct FfprobeFormat {
     duration: Option<String>,
     format_name: Option<String>,
+}
+
+/// Effective display rotation in degrees from `tags.rotate` or a Display Matrix
+/// side-data entry. Returns true if it's an odd quarter-turn (90/270), meaning
+/// the display dimensions are the coded ones swapped.
+fn is_quarter_turned(stream: &FfprobeStream) -> bool {
+    let rot = stream
+        .tags
+        .as_ref()
+        .and_then(|t| t.rotate.as_deref())
+        .and_then(|r| r.trim().parse::<f64>().ok())
+        .or_else(|| {
+            stream
+                .side_data_list
+                .as_ref()
+                .and_then(|list| list.iter().find_map(|s| s.rotation))
+        })
+        .unwrap_or(0.0);
+    (rot.round().rem_euclid(180.0) - 90.0).abs() < 1.0
 }
 
 /// Parse a full ffprobe JSON document into [`VideoMeta`].
@@ -99,10 +130,21 @@ pub fn parse_ffprobe_json(json: &str) -> Result<VideoMeta, ProbeError> {
         .map(|f| f.split(',').next().unwrap_or(f).to_string())
         .unwrap_or_else(|| "unknown".to_string());
 
+    // Report DISPLAY dimensions: ffmpeg auto-rotates on decode, so a 90/270
+    // rotated clip is shown (and cropped/exported) with width/height swapped.
+    // The crop overlay must use the same coordinate system.
+    let coded_w = video.width.unwrap_or(0);
+    let coded_h = video.height.unwrap_or(0);
+    let (width, height) = if is_quarter_turned(video) {
+        (coded_h, coded_w)
+    } else {
+        (coded_w, coded_h)
+    };
+
     Ok(VideoMeta {
         duration_secs,
-        width: video.width.unwrap_or(0),
-        height: video.height.unwrap_or(0),
+        width,
+        height,
         fps_num,
         fps_den,
         codec,
@@ -169,6 +211,37 @@ mod tests {
             parse_frame_rate(Some("30/0")),
             Err(ProbeError::FrameRate(_))
         ));
+    }
+
+    #[test]
+    fn swaps_dimensions_when_rotated_90() {
+        // Coded 1920x1080 with a 90deg display rotation -> display is portrait.
+        let json = r#"{
+            "streams": [
+                { "codec_type": "video", "codec_name": "hevc", "width": 1920,
+                  "height": 1080, "r_frame_rate": "30/1", "duration": "5.0",
+                  "side_data_list": [ { "rotation": -90 } ] }
+            ],
+            "format": { "duration": "5.0", "format_name": "mov" }
+        }"#;
+        let m = parse_ffprobe_json(json).expect("should parse");
+        assert_eq!(m.width, 1080);
+        assert_eq!(m.height, 1920);
+    }
+
+    #[test]
+    fn keeps_dimensions_when_rotated_180() {
+        let json = r#"{
+            "streams": [
+                { "codec_type": "video", "codec_name": "h264", "width": 1920,
+                  "height": 1080, "r_frame_rate": "30/1", "duration": "5.0",
+                  "tags": { "rotate": "180" } }
+            ],
+            "format": { "duration": "5.0", "format_name": "mp4" }
+        }"#;
+        let m = parse_ffprobe_json(json).expect("should parse");
+        assert_eq!(m.width, 1920);
+        assert_eq!(m.height, 1080);
     }
 
     #[test]
