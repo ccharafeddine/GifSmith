@@ -314,14 +314,106 @@ pub async fn generate_proxy(app: AppHandle, path: String) -> Result<String, Stri
     Ok(out_str)
 }
 
-/// Download a video from a URL with the bundled `yt-dlp` sidecar into the OS
-/// temp dir and return its path. Emits "download-progress" events (0.0-1.0).
+/// Extensions GifSmith treats as a direct video-file link (mirrors the frontend
+/// allowlist in DropZone.tsx).
+const VIDEO_EXTENSIONS: [&str; 6] = ["mp4", "mov", "mkv", "webm", "avi", "m4v"];
+
+/// Classify a URL as a direct media link: if its path component ends in a known
+/// video extension (query string ignored), return that lowercased extension.
+/// Such links are fetched over plain HTTP rather than routed through yt-dlp.
+fn direct_media_extension(url: &str) -> Option<String> {
+    let parsed = reqwest::Url::parse(url).ok()?;
+    let ext = Path::new(parsed.path())
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_lowercase)?;
+    VIDEO_EXTENSIONS.contains(&ext.as_str()).then_some(ext)
+}
+
+/// Stream a direct media link to `download_dir()/source.<ext>` over plain HTTP.
+/// Reuses the download dir so app-close cleanup already covers it. Emits
+/// "download-progress" from Content-Length when present; with no Content-Length
+/// it stays silent rather than emitting a fake value.
+async fn download_direct(app: &AppHandle, url: &str, ext: &str) -> Result<String, String> {
+    use std::io::Write;
+
+    let dir = download_dir();
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
+    let out = dir.join(format!("source.{ext}"));
+
+    let mut resp = reqwest::get(url)
+        .await
+        .map_err(|_| "Couldn't reach that link. Check the URL and your connection.".to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("the server returned {} for that link", resp.status()));
+    }
+
+    let total = resp.content_length();
+    let mut downloaded: u64 = 0;
+    let mut file =
+        std::fs::File::create(&out).map_err(|e| format!("could not save the download: {e}"))?;
+    while let Some(chunk) = resp
+        .chunk()
+        .await
+        .map_err(|_| "the download was interrupted before it finished".to_string())?
+    {
+        file.write_all(&chunk)
+            .map_err(|e| format!("could not write the download: {e}"))?;
+        downloaded += chunk.len() as u64;
+        if let Some(total) = total.filter(|t| *t > 0) {
+            let p = (downloaded as f64 / total as f64).clamp(0.0, 1.0);
+            let _ = app.emit("download-progress", p);
+        }
+    }
+
+    Ok(out.to_string_lossy().into_owned())
+}
+
+/// Map a yt-dlp stderr dump to a clear, user-facing message. Raw stderr is kept
+/// only as a one-line fallback for failures we don't specifically recognize.
+fn friendly_ytdlp_error(stderr: &str) -> String {
+    let lower = stderr.to_lowercase();
+    if lower.contains("unsupported url") {
+        "This site isn't supported. Try downloading the video yourself and opening the file, or paste a direct link to a video file.".to_string()
+    } else if lower.contains("unable to download webpage")
+        || lower.contains("failed to resolve")
+        || lower.contains("getaddrinfo")
+        || lower.contains("connection")
+        || lower.contains("timed out")
+        || lower.contains("network is unreachable")
+        || lower.contains("http error")
+    {
+        "Couldn't reach that link. Check the URL and your connection.".to_string()
+    } else {
+        let summary = stderr
+            .lines()
+            .map(str::trim)
+            .rfind(|l| !l.is_empty())
+            .unwrap_or("");
+        if summary.is_empty() {
+            "Download failed.".to_string()
+        } else {
+            format!("Download failed: {summary}")
+        }
+    }
+}
+
+/// Download a video from a URL and return its local path. Direct links to a
+/// video file are fetched over plain HTTP; everything else goes through the
+/// bundled `yt-dlp` sidecar. Emits "download-progress" events (0.0-1.0).
 ///
 /// # Errors
-/// Returns a user-facing message if yt-dlp can't be located or run, the
-/// download fails, or no file is produced.
+/// Returns a user-facing message if the download can't start, fails, or
+/// produces no file.
 #[tauri::command]
 pub async fn download_video(app: AppHandle, url: String) -> Result<String, String> {
+    // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
+    // works even for hosts yt-dlp has no extractor for.
+    if let Some(ext) = direct_media_extension(&url) {
+        return download_direct(&app, &url, &ext).await;
+    }
+
     let dir = download_dir();
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
@@ -344,6 +436,9 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
     }
     args.push(url);
 
+    // MAINTAINER NOTE: the bundled yt-dlp goes stale as sites change their
+    // players; refresh it (scripts/fetch-ytdlp.sh) on every release build or URL
+    // extraction will start failing in the wild. Also tracked in progress.txt.
     let (mut rx, _child) = app
         .shell()
         .sidecar("yt-dlp")
@@ -370,7 +465,7 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
             }
             CommandEvent::Error(e) => errors.push_str(&e),
             CommandEvent::Terminated(payload) if payload.code != Some(0) => {
-                return Err(format!("download failed: {}", errors.trim()));
+                return Err(friendly_ytdlp_error(&errors));
             }
             _ => {}
         }
@@ -396,4 +491,52 @@ fn ffmpeg_path() -> io::Result<PathBuf> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "current exe has no parent dir"))?;
     let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
     Ok(dir.join(name))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{direct_media_extension, friendly_ytdlp_error};
+
+    #[test]
+    fn detects_direct_media_links() {
+        assert_eq!(
+            direct_media_extension("https://x.com/clip.mp4").as_deref(),
+            Some("mp4")
+        );
+        // Query string is ignored, extension is lowercased.
+        assert_eq!(
+            direct_media_extension("https://x.com/path/Clip.MOV?token=abc&t=1").as_deref(),
+            Some("mov")
+        );
+    }
+
+    #[test]
+    fn rejects_non_media_links() {
+        // A watch page, not a file: must fall through to yt-dlp.
+        assert_eq!(direct_media_extension("https://youtube.com/watch?v=abc"), None);
+        // Unsupported extension.
+        assert_eq!(direct_media_extension("https://x.com/clip.gif"), None);
+        // No extension at all.
+        assert_eq!(direct_media_extension("https://x.com/video"), None);
+        // Not a parseable URL.
+        assert_eq!(direct_media_extension("not a url"), None);
+    }
+
+    #[test]
+    fn maps_unsupported_url_error() {
+        let msg = friendly_ytdlp_error("ERROR: Unsupported URL: https://example.com/x");
+        assert!(msg.starts_with("This site isn't supported"));
+    }
+
+    #[test]
+    fn maps_network_error() {
+        let msg = friendly_ytdlp_error("ERROR: Unable to download webpage: timed out");
+        assert_eq!(msg, "Couldn't reach that link. Check the URL and your connection.");
+    }
+
+    #[test]
+    fn falls_back_to_last_stderr_line() {
+        let msg = friendly_ytdlp_error("some noise\n\nERROR: the thing exploded\n");
+        assert_eq!(msg, "Download failed: ERROR: the thing exploded");
+    }
 }
