@@ -9,7 +9,7 @@ use crate::probe::{parse_ffprobe_json, VideoMeta};
 use base64::Engine;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
@@ -141,6 +141,25 @@ pub async fn export_preview(
         path: temp.to_string_lossy().into_owned(),
         bytes,
     })
+}
+
+/// Resolve the default export location: `<Documents>/GifSmith/<filename>`. The
+/// GifSmith folder is created on demand here (only when the user is about to
+/// save), never at startup. The frontend falls back to a bare filename on error.
+///
+/// # Errors
+/// Returns a user-facing message if the Documents directory can't be resolved or
+/// the GifSmith folder can't be created.
+#[tauri::command]
+pub fn default_save_path(app: AppHandle, filename: String) -> Result<String, String> {
+    let docs = app
+        .path()
+        .document_dir()
+        .map_err(|e| format!("could not find your Documents folder: {e}"))?;
+    let dir = docs.join("GifSmith");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("could not create the GifSmith folder: {e}"))?;
+    Ok(dir.join(filename).to_string_lossy().into_owned())
 }
 
 /// Move a preview GIF from the temp dir to the user's chosen path.

@@ -16,6 +16,7 @@ pub fn run() {
             commands::download_video,
             commands::export_preview,
             commands::cancel_export,
+            commands::default_save_path,
             commands::save_preview,
             commands::discard_preview
         ])

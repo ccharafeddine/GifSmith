@@ -73,6 +73,14 @@ export function cancelExport(): Promise<void> {
   return invoke<void>("cancel_export");
 }
 
+/**
+ * Resolve the default save path (<Documents>/GifSmith/<filename>), creating the
+ * folder on demand. Rejects if the Documents dir can't be resolved or created.
+ */
+export function defaultSavePath(filename: string): Promise<string> {
+  return invoke<string>("default_save_path", { filename });
+}
+
 /** Move a previewed temp GIF to the user's chosen destination. */
 export function savePreview(tempPath: string, destPath: string): Promise<void> {
   return invoke<void>("save_preview", { tempPath, destPath });

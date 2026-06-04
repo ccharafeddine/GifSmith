@@ -1,7 +1,7 @@
 import { createSignal, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
-import { savePreview, discardPreview } from "../ipc";
+import { savePreview, discardPreview, defaultSavePath } from "../ipc";
 import {
   previewPath,
   setPreviewPath,
@@ -33,11 +33,21 @@ export default function PreviewModal() {
     if (!p) return;
     setError(null);
 
+    // Default the dialog to <Documents>/GifSmith (Rust creates it on demand).
+    // If that can't be resolved, fall back to a bare filename. The dialog still
+    // opens and the user can navigate and rename anywhere.
+    let defaultPath = "export.gif";
+    try {
+      defaultPath = await defaultSavePath("export.gif");
+    } catch {
+      defaultPath = "export.gif";
+    }
+
     let dest: string | null;
     try {
       dest = await save({
         filters: [{ name: "GIF", extensions: ["gif"] }],
-        defaultPath: "export.gif",
+        defaultPath,
       });
     } catch (e) {
       setError(String(e));
