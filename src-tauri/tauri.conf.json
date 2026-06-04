@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "gifsmith",
+  "productName": "GifSmith",
   "version": "0.1.0",
   "identifier": "com.gifsmith.app",
   "build": {

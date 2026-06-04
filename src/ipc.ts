@@ -68,6 +68,11 @@ export function exportPreview(params: ExportParams): Promise<PreviewResult> {
   return invoke<PreviewResult>("export_preview", { params });
 }
 
+/** Ask the running export to abort. The export rejects with a cancelled error. */
+export function cancelExport(): Promise<void> {
+  return invoke<void>("cancel_export");
+}
+
 /** Move a previewed temp GIF to the user's chosen destination. */
 export function savePreview(tempPath: string, destPath: string): Promise<void> {
   return invoke<void>("save_preview", { tempPath, destPath });

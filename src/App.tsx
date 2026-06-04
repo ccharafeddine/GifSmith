@@ -4,7 +4,7 @@ import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
 import Logo from "./components/Logo";
-import { filePath, meta, previewPath, setPreviewPath } from "./state";
+import { filePath, meta, previewPath, setPreviewPath, closeVideo } from "./state";
 import {
   togglePlayback,
   stepFrame,
@@ -96,11 +96,22 @@ function App() {
             style={{ "--aspect": `${m().width}/${m().height}` }}
           >
             <p class="meta-line">
-              <span class="filename">{basename(filePath() ?? "")}</span>
-              {"  "}
-              {formatTimecode(m().duration_secs)} &middot; {m().width}&times;
-              {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
-              &middot; {m().codec}
+              <span class="meta-text">
+                <span class="filename">{basename(filePath() ?? "")}</span>
+                {"  "}
+                {formatTimecode(m().duration_secs)} &middot; {m().width}&times;
+                {m().height} &middot; {(m().fps_num / m().fps_den).toFixed(2)} fps
+                &middot; {m().codec}
+              </span>
+              <button
+                type="button"
+                class="close-video"
+                title="Close video"
+                aria-label="Close video"
+                onClick={closeVideo}
+              >
+                &times;
+              </button>
             </p>
             <VideoPlayer />
             <ExportPanel />

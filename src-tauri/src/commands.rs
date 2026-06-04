@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
 use base64::Engine;
-use tauri::{AppHandle, Emitter};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
@@ -97,20 +99,39 @@ pub struct PreviewResult {
     pub bytes: u64,
 }
 
+/// Shared flag the running export polls so the frontend can cancel it.
+#[derive(Default)]
+pub struct ExportCancel(pub Arc<AtomicBool>);
+
+/// Request the in-progress export to abort.
+#[tauri::command]
+pub fn cancel_export(cancel: State<'_, ExportCancel>) {
+    cancel.0.store(true, Ordering::SeqCst);
+}
+
 #[tauri::command]
 pub async fn export_preview(
     app: AppHandle,
+    cancel: State<'_, ExportCancel>,
     params: ExportParams,
 ) -> Result<PreviewResult, String> {
     let ffmpeg = ffmpeg_path().map_err(|e| format!("could not locate ffmpeg: {e}"))?;
     let temp = preview_path();
     let out = temp.clone();
+    let flag = cancel.0.clone();
+    flag.store(false, Ordering::SeqCst);
     // Encoding is blocking and CPU-bound; keep it off the async runtime. Frame
     // progress is emitted to the frontend as "export-progress" (0.0-1.0).
     tauri::async_runtime::spawn_blocking(move || {
-        run_export(&ffmpeg, &params, &out, &|p| {
-            let _ = app.emit("export-progress", p);
-        })
+        run_export(
+            &ffmpeg,
+            &params,
+            &out,
+            &|p| {
+                let _ = app.emit("export-progress", p);
+            },
+            &flag,
+        )
     })
     .await
     .map_err(|e| format!("export task failed to run: {e}"))?
@@ -250,6 +271,15 @@ pub async fn generate_proxy(app: AppHandle, path: String) -> Result<String, Stri
     let out = std::env::temp_dir().join(format!("gifsmith-proxy-{nanos}.mp4"));
     let out_str = out.to_string_lossy().into_owned();
 
+    // H.264 encoder choice is platform-specific, both LGPL-clean (no libx264):
+    // - macOS: our from-source ffmpeg has no libopenh264, so use the always-present,
+    //   hardware-accelerated h264_videotoolbox.
+    // - Windows: the BtbN LGPL build ships libopenh264.
+    #[cfg(target_os = "macos")]
+    let vcodec = "h264_videotoolbox";
+    #[cfg(not(target_os = "macos"))]
+    let vcodec = "libopenh264";
+
     let output = app
         .shell()
         .sidecar("ffmpeg")
@@ -264,7 +294,7 @@ pub async fn generate_proxy(app: AppHandle, path: String) -> Result<String, Stri
             "-vf",
             "scale=640:-2",
             "-c:v",
-            "libopenh264",
+            vcodec,
             "-b:v",
             "2500k",
             "-pix_fmt",

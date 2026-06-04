@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
-import { exportPreview } from "../ipc";
+import { exportPreview, cancelExport } from "../ipc";
 import {
   filePath,
   meta,
@@ -64,6 +64,8 @@ export default function ExportPanel() {
   const [error, setError] = createSignal<string | null>(null);
   const [activePreset, setActivePreset] = createSignal<string | null>(null);
   const [limitMb, setLimitMb] = createSignal<number | null>(null);
+  // Set just before requesting cancellation so the resulting error is swallowed.
+  let userCancelled = false;
 
   function applyPreset(p: Preset) {
     setWidth(p.width);
@@ -73,9 +75,18 @@ export default function ExportPanel() {
     setActivePreset(p.name);
   }
 
+  // Frames in one forward pass, matching the encoder's (duration / speed) * fps:
+  // slowing the clip (speed < 1) stretches it into more frames, speeding it up
+  // into fewer. Every frame-count metric below derives from this.
+  const baseFrameCount = () => {
+    const dur = Math.max(0, outPoint() - inPoint());
+    const s = speed() > 0 ? speed() : 1;
+    return Math.max(1, Math.round((dur / s) * fps()));
+  };
+
   // Output frame count (boomerang adds the reversed pass, minus the two seams).
   const frameCount = () => {
-    const base = Math.max(1, Math.round((outPoint() - inPoint()) * fps()));
+    const base = baseFrameCount();
     return boomerang() ? Math.max(1, 2 * base - 2) : base;
   };
 
@@ -112,15 +123,12 @@ export default function ExportPanel() {
     return h - (h % 2);
   };
 
-  // Estimated peak RAM for a boomerang: all output frames buffered at once.
+  // Estimated peak RAM for a boomerang: the encoder buffers one full forward
+  // pass (speed-adjusted) in memory before feeding it forward then reversed.
   const boomerangRamBytes = () => {
     const ow = Math.floor(width() / 2) * 2;
     const oh = outHeight();
-    const frames = Math.max(
-      1,
-      Math.round((outPoint() - inPoint()) * fps()),
-    );
-    return frames * ow * oh * 4;
+    return baseFrameCount() * ow * oh * 4;
   };
 
   function toggleCrop(on: boolean) {
@@ -182,6 +190,7 @@ export default function ExportPanel() {
     setError(null);
     setProgress(0);
     setExporting(true);
+    userCancelled = false;
     const unlisten = await listen<number>("export-progress", (e) =>
       setProgress(e.payload),
     );
@@ -203,10 +212,21 @@ export default function ExportPanel() {
       setPreviewBytes(res.bytes);
       setPreviewPath(res.path);
     } catch (e) {
-      setError(String(e));
+      // A user-requested cancel surfaces as the "cancelled" error; ignore it.
+      if (!userCancelled) setError(String(e));
     } finally {
       unlisten();
       setExporting(false);
+      userCancelled = false;
+    }
+  }
+
+  async function abortExport() {
+    userCancelled = true;
+    try {
+      await cancelExport();
+    } catch {
+      // The export task itself reports completion via doExport's finally block.
     }
   }
 
@@ -382,6 +402,9 @@ export default function ExportPanel() {
             <div class="progress-fill" />
           </div>
           <span class="progress-pct">{Math.round(progress() * 100)}%</span>
+          <button type="button" class="cancel" onClick={abortExport}>
+            Cancel
+          </button>
         </div>
       </Show>
       <Show when={error()}>

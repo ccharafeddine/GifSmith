@@ -299,13 +299,44 @@ input[type="range"]:focus {
 .meta-line {
   margin: 0;
   max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   color: var(--fg-2);
   font-family: var(--font-mono);
   font-size: var(--fs-num);
   font-variant-numeric: tabular-nums;
+}
+
+.meta-text {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Close-video button: clears the source without opening another. */
+.close-video {
+  flex: none;
+  margin-left: var(--s2);
+  width: 1.4rem;
+  height: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  color: var(--fg-3);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close-video:hover {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* ---- Player + stage --------------------------------------------------- */
@@ -743,6 +774,24 @@ input[type="range"]:focus {
   width: var(--p);
   background: var(--accent);
   transition: width 0.1s linear;
+}
+
+/* Cancel button alongside the export progress bar. */
+.cancel {
+  flex: none;
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  color: var(--fg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  font-family: var(--font-body);
+  font-size: var(--fs-num);
+  cursor: pointer;
+}
+
+.cancel:hover {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* ---- Preview modal ---------------------------------------------------- */

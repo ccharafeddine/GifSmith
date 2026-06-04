@@ -8,12 +8,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(commands::ExportCancel::default())
         .invoke_handler(tauri::generate_handler![
             commands::probe_video,
             commands::generate_filmstrip,
             commands::generate_proxy,
             commands::download_video,
             commands::export_preview,
+            commands::cancel_export,
             commands::save_preview,
             commands::discard_preview
         ])

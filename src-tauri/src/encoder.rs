@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use gifski::progress::NoProgress;
@@ -28,6 +29,8 @@ pub enum EncodeError {
     Ffmpeg(String),
     #[error("no frames were produced for this selection")]
     NoFrames,
+    #[error("export was cancelled")]
+    Cancelled,
 }
 
 /// A crop region in source pixels (FFmpeg `crop=w:h:x:y`).
@@ -82,6 +85,7 @@ pub fn export_gif(
     params: &ExportParams,
     output_path: &Path,
     on_progress: &dyn Fn(f64),
+    cancel: &AtomicBool,
 ) -> Result<(), EncodeError> {
     let out_w = even(params.width);
     // Aspect comes from the crop region when cropping, else the full source.
@@ -112,8 +116,11 @@ pub fn export_gif(
         params.fps
     );
 
-    // -ss before -i = fast (keyframe) seek; good enough for the MVP. -t bounds
-    // the output to the selection length.
+    // -ss and -t are both INPUT options (before -i): -ss is a fast keyframe seek,
+    // -t bounds the SOURCE read to the selection length. Bounding the source (not
+    // the output) is essential with speed != 1, where setpts retimes the frames:
+    // an output-side -t would truncate a slowed clip to a fraction of the
+    // selection. setpts/fps/crop/scale in -vf then retime and resample.
     let mut child = Command::new(ffmpeg)
         .args([
             "-v",
@@ -121,10 +128,10 @@ pub fn export_gif(
             "-nostdin",
             "-ss",
             &format!("{:.6}", params.start_secs),
-            "-i",
-            &params.input_path,
             "-t",
             &format!("{duration:.6}"),
+            "-i",
+            &params.input_path,
             "-vf",
             &vf,
             "-f",
@@ -178,6 +185,10 @@ pub fn export_gif(
         let mut frames: Vec<ImgVec<RGBA8>> = Vec::new();
         let mut buf = vec![0u8; frame_bytes];
         loop {
+            if cancel.load(Ordering::Relaxed) {
+                let _ = child.kill();
+                return Err(EncodeError::Cancelled);
+            }
             let n = read_full(&mut stdout, &mut buf)?;
             if n != frame_bytes {
                 break;
@@ -205,6 +216,9 @@ pub fn export_gif(
         }
         let total_out = order.len().max(1);
         for &i in &order {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(EncodeError::Cancelled);
+            }
             let pts = idx as f64 / f64::from(params.fps);
             collector.add_frame_rgba(idx, frames[i].clone(), pts)?;
             idx += 1;
@@ -220,6 +234,10 @@ pub fn export_gif(
     } else {
         let mut buf = vec![0u8; frame_bytes];
         loop {
+            if cancel.load(Ordering::Relaxed) {
+                let _ = child.kill();
+                return Err(EncodeError::Cancelled);
+            }
             let n = read_full(&mut stdout, &mut buf)?;
             if n != frame_bytes {
                 break; // clean EOF (0) or a partial trailing frame

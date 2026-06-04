@@ -452,6 +452,36 @@ RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
   - VERIFIED: npm run build (TS ok). HMR'd live.
   - TO TEST: enable Bounce, Play -> editor goes forward then backward, repeat.
 
+[Close video + cancel export] (user request, 2026-06-03)
+  - Close video: new closeVideo() in state.ts releases the <video> handle
+    (pause + removeAttribute src + load, unlocks the source file on disk) and
+    resets source-derived signals (filePath/meta/filmstrip/time/in/out/view/
+    crop). Export settings (fps/width/quality/speed) intentionally kept. Wired
+    to a round "x" button in App.tsx's meta-line (.close-video).
+  - Cancel export: Arc<AtomicBool> in Tauri managed state (ExportCancel),
+    reset to false at export start, set true by new cancel_export command.
+    encoder::export_gif takes &AtomicBool, polls it between frames in all three
+    loops (bounce buffer, bounce feed, streaming), kills its ffmpeg child and
+    returns EncodeError::Cancelled. Frontend: ipc.cancelExport(), ExportPanel
+    Cancel button next to the progress bar, userCancelled flag swallows the
+    resulting cancelled error so no error banner shows.
+  - Leftover partial temp GIF on cancel is harmless: overwritten next export,
+    deleted on app close, never shown (catch skips setPreviewPath).
+  - VERIFIED: cargo check + clippy -D warnings clean, tsc --noEmit clean.
+  - TO TEST: start a long export -> Cancel aborts within a frame or two, no
+    error shown; "x" on meta-line clears the video back to the loader.
+
+[App icon recolor] (user request, 2026-06-03)
+  - Recolored src/assets/gifsmith-icon.svg from gold (#ffd60a) to the brand
+    scheme: violet gradient trim frame (#c6acff->#a974ff->#8a4dff, matches
+    --grad / in-app --trim) + cyan play glyph (#45f2f2, --accent-2) on a
+    near-black #0a0a0a squircle. Echoes the two-tone wordmark.
+  - Regenerated every platform icon via `npx tauri icon` from the SVG:
+    icon.ico (Windows shortcut/taskbar), icon.icns (macOS), PNG set, iOS,
+    Android. Filenames unchanged so tauri.conf.json needs no edit.
+  - GOTCHA: tauri's SVG parser (usvg) rejects "--" inside XML comments
+    (InvalidComment); keep double-hyphens out of icon SVG comments.
+
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
   - Repo: https://github.com/ccharafeddine/GifSmith

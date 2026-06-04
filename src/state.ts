@@ -86,3 +86,29 @@ export const ASPECT_RATIO: Record<Exclude<CropAspect, "free">, number> = {
 
 /** Play the clip forward then reversed. */
 export const [boomerang, setBoomerang] = createSignal(false);
+
+/**
+ * Clear the loaded video without opening another: release the <video> handle
+ * (so the source file is no longer locked on disk) and reset source-derived
+ * state back to the empty loader. Export settings are intentionally kept.
+ */
+export function closeVideo(): void {
+  const v = videoEl();
+  if (v) {
+    v.pause();
+    v.removeAttribute("src");
+    v.load();
+  }
+  setPlaying(false);
+  setFilePath(null);
+  setMeta(null);
+  setFilmstripSrc(null);
+  setCurrentTime(0);
+  setInPoint(0);
+  setOutPoint(0);
+  setViewStart(0);
+  setViewEnd(0);
+  setCropEnabled(false);
+  setCrop(null);
+  setCropAspect("free");
+}

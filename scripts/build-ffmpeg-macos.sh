@@ -34,6 +34,10 @@ tar xf ffmpeg.tar.xz
 cd "ffmpeg-${FFMPEG_VERSION}"
 
 echo "Configuring (LGPL, no external GPL libs)..."
+# --enable-videotoolbox makes the macOS system H.264 encoder (h264_videotoolbox)
+# an explicit, required part of the build. The playback-proxy command uses it on
+# macOS (the from-source ffmpeg has no libopenh264). It's a system framework, so
+# this stays LGPL-clean. Configure fails loudly if it can't be enabled.
 ./configure \
   --prefix="$WORK/out" \
   --disable-gpl \
@@ -41,7 +45,8 @@ echo "Configuring (LGPL, no external GPL libs)..."
   --disable-doc \
   --disable-ffplay \
   --disable-debug \
-  --enable-pic
+  --enable-pic \
+  --enable-videotoolbox
 
 make -j"$(sysctl -n hw.ncpu)"
 make install
