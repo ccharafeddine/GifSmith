@@ -143,22 +143,23 @@ pub async fn export_preview(
     })
 }
 
-/// Resolve the default export location: `<Documents>/GifSmith/<filename>`. The
-/// GifSmith folder is created on demand here (only when the user is about to
-/// save), never at startup. The frontend falls back to a bare filename on error.
+/// Resolve the default export location: `<Documents>/GifSmith/Exports/<filename>`.
+/// The folder is created on demand here (only when the user is about to save),
+/// never at startup. The frontend falls back to a bare filename on error.
 ///
 /// # Errors
 /// Returns a user-facing message if the Documents directory can't be resolved or
-/// the GifSmith folder can't be created.
+/// the export folder can't be created.
 #[tauri::command]
 pub fn default_save_path(app: AppHandle, filename: String) -> Result<String, String> {
     let docs = app
         .path()
         .document_dir()
         .map_err(|e| format!("could not find your Documents folder: {e}"))?;
-    let dir = docs.join("GifSmith");
+    // create_dir_all builds both levels (GifSmith and Exports) if missing.
+    let dir = docs.join("GifSmith").join("Exports");
     std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("could not create the GifSmith folder: {e}"))?;
+        .map_err(|e| format!("could not create the GifSmith export folder: {e}"))?;
     Ok(dir.join(filename).to_string_lossy().into_owned())
 }
 
