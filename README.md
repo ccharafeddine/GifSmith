@@ -23,13 +23,20 @@ build of [FFmpeg](https://ffmpeg.org) for decoding.
 ## Features
 
 - Open `mp4`, `mov`, `mkv`, `webm`, `avi`, `m4v` via file picker or drag-and-drop,
-  **or import from a URL** (YouTube and other sites, via a bundled `yt-dlp`)
-- iOS-style trim handles over a **zoomable** timeline (zoom down to a 30-second
-  window for precise short clips)
-- **Crop** with a draggable, resizable rectangle (tracked in source pixels)
+  **or import from a URL** (YouTube and other sites, via a bundled `yt-dlp`;
+  direct links to a video file download straight over HTTP)
+- A timeline with **filmstrip thumbnails** and iOS-style trim handles, **zoomable**
+  down to a 30-second window for precise short clips
+- **Crop** with a draggable, resizable rectangle (tracked in source pixels), with
+  free-form or locked aspect ratios: 16:9, 9:16, and 1:1
 - **Boomerang** (play forward then reversed), with live preview
-- **FPS**, **width**, **quality**, and **speed** (0.5x-2x) controls
-- Preview the result before committing: **Save**, **Re-export**, or **Discard**
+- **FPS**, **width**, **quality**, and **speed** (0.5x-2x) controls, plus
+  per-platform presets (Web, GIPHY, X, Discord) and a live frame/size estimate
+- Preview the result before committing: **Save**, **Re-export**, or **Discard**.
+  **Cancel** a long export mid-encode, or **clear** the loaded video without
+  opening another
+- Exports default to a **GifSmith/Exports** folder in your Documents (created on
+  first save); you're free to save anywhere
 - High-quality `gifski` encoding, streamed frame-by-frame with no intermediate
   files (a URL import downloads to a temp file that's deleted when you quit)
 - Dark, minimal interface
@@ -90,8 +97,8 @@ sidecar processes (never linked into the app), keep their own licenses:
   `--disable-gpl --disable-nonfree` (no LGPL static macOS build is published).
   Source: <https://ffmpeg.org/download.html>.
 - **yt-dlp** (Unlicense / public domain), for importing from a URL.
-- **Fonts**: Space Grotesk and Space Mono (SIL Open Font License), bundled in
-  `src/assets/fonts` with their license files. No web-font requests are made.
+- **Font**: Syne (SIL Open Font License), bundled in `src/assets/fonts` with its
+  license file. No web-font requests are made.
 
 ## License
 
