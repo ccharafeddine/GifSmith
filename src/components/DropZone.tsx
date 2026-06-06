@@ -2,7 +2,12 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { probeVideo, downloadVideo, generateFilmstrip } from "../ipc";
+import {
+  probeVideo,
+  downloadVideo,
+  cancelDownload,
+  generateFilmstrip,
+} from "../ipc";
 import { setFilePath, setMeta, setFilmstripSrc, videoEl } from "../state";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
@@ -24,6 +29,8 @@ export default function DropZone() {
   const [url, setUrl] = createSignal("");
   const [downloading, setDownloading] = createSignal(false);
   const [dlProgress, setDlProgress] = createSignal(0);
+  // Set just before requesting cancellation so the resulting error is swallowed.
+  let userCancelledDownload = false;
 
   // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
@@ -80,6 +87,7 @@ export default function DropZone() {
     setError(null);
     setDlProgress(0);
     setDownloading(true);
+    userCancelledDownload = false;
     const unlisten = await listen<number>("download-progress", (ev) =>
       setDlProgress(ev.payload),
     );
@@ -88,10 +96,21 @@ export default function DropZone() {
       await load(path);
       setUrl("");
     } catch (err) {
-      setError(String(err));
+      // A user-requested cancel surfaces as the cancelled error; ignore it.
+      if (!userCancelledDownload) setError(String(err));
     } finally {
       unlisten();
       setDownloading(false);
+      userCancelledDownload = false;
+    }
+  }
+
+  async function abortDownload() {
+    userCancelledDownload = true;
+    try {
+      await cancelDownload();
+    } catch {
+      // loadFromUrl's finally block clears the downloading state.
     }
   }
 
@@ -149,6 +168,9 @@ export default function DropZone() {
             <div class="progress-fill" />
           </div>
           <span class="progress-pct">{Math.round(dlProgress() * 100)}%</span>
+          <button type="button" class="cancel" onClick={abortDownload}>
+            Cancel
+          </button>
         </div>
       </Show>
       <Show when={error()}>

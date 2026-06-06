@@ -109,6 +109,28 @@ pub fn cancel_export(cancel: State<'_, ExportCancel>) {
     cancel.0.store(true, Ordering::SeqCst);
 }
 
+/// User-facing message returned when a download is cancelled. The frontend
+/// matches on this to swallow the error instead of showing it.
+const DOWNLOAD_CANCELLED: &str = "Download cancelled.";
+
+/// Shared flag the running URL download polls so the frontend can cancel it.
+#[derive(Default)]
+pub struct DownloadCancel(pub Arc<AtomicBool>);
+
+/// Request the in-progress URL download to abort.
+#[tauri::command]
+pub fn cancel_download(cancel: State<'_, DownloadCancel>) {
+    cancel.0.store(true, Ordering::SeqCst);
+}
+
+/// Resolve once `flag` is set. Used to race a download await against a cancel
+/// request so a stalled fetch (no bytes, no events) can still be aborted.
+async fn cancelled(flag: &AtomicBool) {
+    while !flag.load(Ordering::SeqCst) {
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+    }
+}
+
 #[tauri::command]
 pub async fn export_preview(
     app: AppHandle,
@@ -354,7 +376,12 @@ fn direct_media_extension(url: &str) -> Option<String> {
 /// Reuses the download dir so app-close cleanup already covers it. Emits
 /// "download-progress" from Content-Length when present; with no Content-Length
 /// it stays silent rather than emitting a fake value.
-async fn download_direct(app: &AppHandle, url: &str, ext: &str) -> Result<String, String> {
+async fn download_direct(
+    app: &AppHandle,
+    url: &str,
+    ext: &str,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
     use std::io::Write;
 
     let dir = download_dir();
@@ -373,11 +400,20 @@ async fn download_direct(app: &AppHandle, url: &str, ext: &str) -> Result<String
     let mut downloaded: u64 = 0;
     let mut file =
         std::fs::File::create(&out).map_err(|e| format!("could not save the download: {e}"))?;
-    while let Some(chunk) = resp
-        .chunk()
-        .await
-        .map_err(|_| "the download was interrupted before it finished".to_string())?
-    {
+    // Race each chunk read against the cancel flag so even a stalled connection
+    // (bytes never arrive) aborts promptly instead of hanging.
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            () = cancelled(cancel) => {
+                drop(file);
+                let _ = std::fs::remove_dir_all(&dir);
+                return Err(DOWNLOAD_CANCELLED.to_string());
+            }
+            chunk = resp.chunk() => chunk
+                .map_err(|_| "the download was interrupted before it finished".to_string())?,
+        };
+        let Some(chunk) = chunk else { break };
         file.write_all(&chunk)
             .map_err(|e| format!("could not write the download: {e}"))?;
         downloaded += chunk.len() as u64;
@@ -427,11 +463,18 @@ fn friendly_ytdlp_error(stderr: &str) -> String {
 /// Returns a user-facing message if the download can't start, fails, or
 /// produces no file.
 #[tauri::command]
-pub async fn download_video(app: AppHandle, url: String) -> Result<String, String> {
+pub async fn download_video(
+    app: AppHandle,
+    cancel: State<'_, DownloadCancel>,
+    url: String,
+) -> Result<String, String> {
+    let flag = cancel.0.clone();
+    flag.store(false, Ordering::SeqCst);
+
     // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
     // works even for hosts yt-dlp has no extractor for.
     if let Some(ext) = direct_media_extension(&url) {
-        return download_direct(&app, &url, &ext).await;
+        return download_direct(&app, &url, &ext, &flag).await;
     }
 
     let dir = download_dir();
@@ -459,7 +502,7 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
     // MAINTAINER NOTE: the bundled yt-dlp goes stale as sites change their
     // players; refresh it (scripts/fetch-ytdlp.sh) on every release build or URL
     // extraction will start failing in the wild. Also tracked in progress.txt.
-    let (mut rx, _child) = app
+    let (mut rx, child) = app
         .shell()
         .sidecar("yt-dlp")
         .map_err(|e| format!("could not locate yt-dlp: {e}"))?
@@ -468,7 +511,22 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
         .map_err(|e| format!("yt-dlp failed to start: {e}"))?;
 
     let mut errors = String::new();
-    while let Some(event) = rx.recv().await {
+    loop {
+        // Race the next yt-dlp event against the cancel flag. recv() blocks while
+        // yt-dlp is stalled, so polling the flag inside the loop alone wouldn't
+        // cancel a hang; select! lets the cancel branch fire regardless.
+        let event = tokio::select! {
+            biased;
+            () = cancelled(&flag) => {
+                let _ = child.kill();
+                let _ = std::fs::remove_dir_all(&dir);
+                return Err(DOWNLOAD_CANCELLED.to_string());
+            }
+            event = rx.recv() => match event {
+                Some(event) => event,
+                None => break,
+            },
+        };
         match event {
             CommandEvent::Stdout(bytes) => {
                 if let Some(p) = parse_download_percent(&String::from_utf8_lossy(&bytes)) {

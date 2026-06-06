@@ -32,4 +32,7 @@ base64 = "0.22"
 # Direct-media-URL download path. native-tls uses the OS TLS stack (schannel on
 # Windows, Secure Transport on macOS): no aws-lc-sys C build, no extra disk.
 reqwest = { version = "0.13", default-features = false, features = ["native-tls"] }
+# select!/sleep to race a download against a cancel flag so a stalled URL fetch
+# can be aborted promptly. tokio is already in the tree via tauri.
+tokio = { version = "1", features = ["time", "macros"] }
 

@@ -44,6 +44,11 @@ export function downloadVideo(url: string): Promise<string> {
   return invoke<string>("download_video", { url });
 }
 
+/** Ask the running URL download to abort. The download rejects with a cancelled error. */
+export function cancelDownload(): Promise<void> {
+  return invoke<void>("cancel_download");
+}
+
 /** Transcode an H.264 playback proxy for an unsupported codec; resolves to its path. */
 export function generateProxy(path: string): Promise<string> {
   return invoke<string>("generate_proxy", { path });
