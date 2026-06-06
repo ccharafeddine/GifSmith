@@ -1,3 +1,7 @@
 node_modules
 dist
 tauri-dev.log
+
+# Exported GIFs land here when saving into ~/Documents/GifSmith (this clone).
+# User content, never commit.
+Exports/
