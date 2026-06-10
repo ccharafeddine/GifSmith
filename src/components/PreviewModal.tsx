@@ -2,6 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { savePreview, discardPreview, defaultSavePath } from "../ipc";
+import { storedExportsDir } from "../settings";
 import {
   previewPath,
   setPreviewPath,
@@ -38,7 +39,7 @@ export default function PreviewModal() {
     // opens and the user can navigate and rename anywhere.
     let defaultPath = "export.gif";
     try {
-      defaultPath = await defaultSavePath("export.gif");
+      defaultPath = await defaultSavePath("export.gif", storedExportsDir());
     } catch {
       defaultPath = "export.gif";
     }

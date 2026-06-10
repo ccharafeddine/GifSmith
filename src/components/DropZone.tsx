@@ -2,13 +2,8 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import {
-  probeVideo,
-  downloadVideo,
-  cancelDownload,
-  generateFilmstrip,
-} from "../ipc";
-import { setFilePath, setMeta, setFilmstripSrc, videoEl } from "../state";
+import { downloadVideo, cancelDownload } from "../ipc";
+import { loadSource } from "../source";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
 const VIDEO_EXTENSIONS = ["mp4", "mov", "mkv", "webm", "avi", "m4v"];
@@ -34,29 +29,12 @@ export default function DropZone() {
 
   // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
-    // Release the previously-open source so it's no longer locked on disk.
-    const v = videoEl();
-    if (v) {
-      v.pause();
-      v.removeAttribute("src");
-      v.load();
-    }
     setLoading(true);
     setError(null);
-    setFilePath(path);
-    setMeta(null);
-    setFilmstripSrc(null);
     try {
-      const m = await probeVideo(path);
-      setMeta(m);
-      // Build the timeline thumbnail strip in the background (non-blocking).
-      // Resolves to a data URI so the <img> loads directly.
-      generateFilmstrip(path, m.duration_secs)
-        .then((dataUri) => setFilmstripSrc(dataUri))
-        .catch(() => setFilmstripSrc(null));
+      await loadSource(path);
     } catch (e) {
       setError(String(e));
-      setFilePath(null);
     } finally {
       setLoading(false);
     }
