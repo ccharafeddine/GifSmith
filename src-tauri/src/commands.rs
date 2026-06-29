@@ -28,6 +28,11 @@ fn filmstrip_path() -> PathBuf {
     std::env::temp_dir().join("gifsmith-filmstrip.png")
 }
 
+/// Temp dir holding cached gallery thumbnails (first-frame PNGs).
+fn thumbs_dir() -> PathBuf {
+    std::env::temp_dir().join("gifsmith-thumbs")
+}
+
 /// Remove any leftover playback-proxy files (uniquely named, so glob by prefix).
 fn remove_proxy_files() {
     if let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) {
@@ -46,6 +51,7 @@ pub fn cleanup_temp() {
     let _ = std::fs::remove_file(preview_path());
     let _ = std::fs::remove_file(filmstrip_path());
     let _ = std::fs::remove_dir_all(download_dir());
+    let _ = std::fs::remove_dir_all(thumbs_dir());
     remove_proxy_files();
 }
 
@@ -109,6 +115,28 @@ pub fn cancel_export(cancel: State<'_, ExportCancel>) {
     cancel.0.store(true, Ordering::SeqCst);
 }
 
+/// User-facing message returned when a download is cancelled. The frontend
+/// matches on this to swallow the error instead of showing it.
+const DOWNLOAD_CANCELLED: &str = "Download cancelled.";
+
+/// Shared flag the running URL download polls so the frontend can cancel it.
+#[derive(Default)]
+pub struct DownloadCancel(pub Arc<AtomicBool>);
+
+/// Request the in-progress URL download to abort.
+#[tauri::command]
+pub fn cancel_download(cancel: State<'_, DownloadCancel>) {
+    cancel.0.store(true, Ordering::SeqCst);
+}
+
+/// Resolve once `flag` is set. Used to race a download await against a cancel
+/// request so a stalled fetch (no bytes, no events) can still be aborted.
+async fn cancelled(flag: &AtomicBool) {
+    while !flag.load(Ordering::SeqCst) {
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+    }
+}
+
 #[tauri::command]
 pub async fn export_preview(
     app: AppHandle,
@@ -143,24 +171,175 @@ pub async fn export_preview(
     })
 }
 
-/// Resolve the default export location: `<Documents>/GifSmith/Exports/<filename>`.
-/// The folder is created on demand here (only when the user is about to save),
-/// never at startup. The frontend falls back to a bare filename on error.
+/// Resolve the export folder path. Does not create it: callers that need it on
+/// disk (e.g. `default_save_path`) create it themselves; readers (e.g.
+/// `list_exports`) treat a missing folder as empty.
 ///
-/// # Errors
-/// Returns a user-facing message if the Documents directory can't be resolved or
-/// the export folder can't be created.
-#[tauri::command]
-pub fn default_save_path(app: AppHandle, filename: String) -> Result<String, String> {
+/// In dev builds this is the project's own `Exports/` folder (so the gallery and
+/// the save default point at your working set). Release builds use
+/// `<Documents>/GifSmith/Exports`. Both save and gallery share this, so they
+/// always agree.
+fn exports_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    // CARGO_MANIFEST_DIR is baked in at compile time as `<project>/src-tauri`;
+    // its parent is the project root. Gated on debug_assertions so shipped
+    // builds never reference a path that won't exist on the user's machine.
+    if cfg!(debug_assertions) {
+        if let Some(root) = Path::new(env!("CARGO_MANIFEST_DIR")).parent() {
+            return Ok(root.join("Exports"));
+        }
+    }
     let docs = app
         .path()
         .document_dir()
         .map_err(|e| format!("could not find your Documents folder: {e}"))?;
-    // create_dir_all builds both levels (GifSmith and Exports) if missing.
-    let dir = docs.join("GifSmith").join("Exports");
+    Ok(docs.join("GifSmith").join("Exports"))
+}
+
+/// Return the effective default exports folder (dev: the project `Exports/`,
+/// release: `<Documents>/GifSmith/Exports`) so the gallery can show it on first
+/// run before the user has chosen one.
+///
+/// # Errors
+/// Returns a user-facing message if the default folder can't be resolved.
+#[tauri::command]
+pub fn get_exports_dir(app: AppHandle) -> Result<String, String> {
+    Ok(exports_dir(&app)?.to_string_lossy().into_owned())
+}
+
+/// Resolve the default save path `<dir>/<filename>`, where `dir` is the user's
+/// configured exports folder (passed from the frontend) or the default when
+/// unset. The folder is created on demand here, never at startup. The frontend
+/// falls back to a bare filename on error.
+///
+/// # Errors
+/// Returns a user-facing message if the folder can't be resolved or created.
+#[tauri::command]
+pub fn default_save_path(
+    app: AppHandle,
+    filename: String,
+    dir: Option<String>,
+) -> Result<String, String> {
+    let dir = match dir {
+        Some(d) => PathBuf::from(d),
+        None => exports_dir(&app)?,
+    };
     std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("could not create the GifSmith export folder: {e}"))?;
+        .map_err(|e| format!("could not create the export folder: {e}"))?;
     Ok(dir.join(filename).to_string_lossy().into_owned())
+}
+
+/// One GIF in the gallery: file name, absolute path, byte size, and mtime
+/// (unix seconds, used to sort newest-first).
+#[derive(serde::Serialize)]
+pub struct ExportEntry {
+    pub name: String,
+    pub path: String,
+    pub bytes: u64,
+    pub modified: u64,
+}
+
+/// List the `.gif` files in the export folder, newest first, for the gallery.
+/// `dir` is the user's configured exports folder (passed from the frontend) or
+/// the default when unset. A missing folder is not an error: it yields an empty
+/// list.
+///
+/// # Errors
+/// Returns a user-facing message if the default folder can't be resolved or the
+/// directory exists but can't be read.
+#[tauri::command]
+pub fn list_exports(app: AppHandle, dir: Option<String>) -> Result<Vec<ExportEntry>, String> {
+    let dir = match dir {
+        Some(d) => PathBuf::from(d),
+        None => exports_dir(&app)?,
+    };
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let entries =
+        std::fs::read_dir(&dir).map_err(|e| format!("could not read the export folder: {e}"))?;
+    let mut gifs: Vec<ExportEntry> = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_gif = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("gif"));
+        if !is_gif {
+            continue;
+        }
+        let Ok(meta) = std::fs::metadata(&path) else {
+            continue;
+        };
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_secs());
+        gifs.push(ExportEntry {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            path: path.to_string_lossy().into_owned(),
+            bytes: meta.len(),
+            modified,
+        });
+    }
+    gifs.sort_by_key(|g| std::cmp::Reverse(g.modified));
+    Ok(gifs)
+}
+
+/// First-frame thumbnail for a gallery GIF, returned as a PNG data URI. Cached
+/// on disk (keyed by source path + mtime) so repeat opens skip ffmpeg. The
+/// scroller uses these light stills instead of the full ~15 MB animated GIFs.
+///
+/// # Errors
+/// Returns a user-facing message if ffmpeg can't be located or run, or the
+/// thumbnail can't be read.
+#[tauri::command]
+pub async fn gallery_thumbnail(app: AppHandle, path: String) -> Result<String, String> {
+    use std::hash::{Hash, Hasher};
+
+    let mtime = std::fs::metadata(&path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_secs());
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    mtime.hash(&mut hasher);
+    let cache = thumbs_dir().join(format!("{:x}.png", hasher.finish()));
+
+    if !cache.exists() {
+        std::fs::create_dir_all(thumbs_dir())
+            .map_err(|e| format!("could not prepare the thumbnail folder: {e}"))?;
+        let cache_str = cache.to_string_lossy().into_owned();
+        // First frame only, scaled to 160px tall (even width via -2).
+        let output = app
+            .shell()
+            .sidecar("ffmpeg")
+            .map_err(|e| format!("could not locate ffmpeg: {e}"))?
+            .args([
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                &path,
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=-2:160",
+                &cache_str,
+            ])
+            .output()
+            .await
+            .map_err(|e| format!("ffmpeg failed to start: {e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("could not build thumbnail: {}", stderr.trim()));
+        }
+    }
+
+    let bytes = std::fs::read(&cache).map_err(|e| format!("could not read thumbnail: {e}"))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:image/png;base64,{b64}"))
 }
 
 /// Move a preview GIF from the temp dir to the user's chosen path.
@@ -354,7 +533,12 @@ fn direct_media_extension(url: &str) -> Option<String> {
 /// Reuses the download dir so app-close cleanup already covers it. Emits
 /// "download-progress" from Content-Length when present; with no Content-Length
 /// it stays silent rather than emitting a fake value.
-async fn download_direct(app: &AppHandle, url: &str, ext: &str) -> Result<String, String> {
+async fn download_direct(
+    app: &AppHandle,
+    url: &str,
+    ext: &str,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
     use std::io::Write;
 
     let dir = download_dir();
@@ -373,11 +557,20 @@ async fn download_direct(app: &AppHandle, url: &str, ext: &str) -> Result<String
     let mut downloaded: u64 = 0;
     let mut file =
         std::fs::File::create(&out).map_err(|e| format!("could not save the download: {e}"))?;
-    while let Some(chunk) = resp
-        .chunk()
-        .await
-        .map_err(|_| "the download was interrupted before it finished".to_string())?
-    {
+    // Race each chunk read against the cancel flag so even a stalled connection
+    // (bytes never arrive) aborts promptly instead of hanging.
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            () = cancelled(cancel) => {
+                drop(file);
+                let _ = std::fs::remove_dir_all(&dir);
+                return Err(DOWNLOAD_CANCELLED.to_string());
+            }
+            chunk = resp.chunk() => chunk
+                .map_err(|_| "the download was interrupted before it finished".to_string())?,
+        };
+        let Some(chunk) = chunk else { break };
         file.write_all(&chunk)
             .map_err(|e| format!("could not write the download: {e}"))?;
         downloaded += chunk.len() as u64;
@@ -427,11 +620,18 @@ fn friendly_ytdlp_error(stderr: &str) -> String {
 /// Returns a user-facing message if the download can't start, fails, or
 /// produces no file.
 #[tauri::command]
-pub async fn download_video(app: AppHandle, url: String) -> Result<String, String> {
+pub async fn download_video(
+    app: AppHandle,
+    cancel: State<'_, DownloadCancel>,
+    url: String,
+) -> Result<String, String> {
+    let flag = cancel.0.clone();
+    flag.store(false, Ordering::SeqCst);
+
     // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
     // works even for hosts yt-dlp has no extractor for.
     if let Some(ext) = direct_media_extension(&url) {
-        return download_direct(&app, &url, &ext).await;
+        return download_direct(&app, &url, &ext, &flag).await;
     }
 
     let dir = download_dir();
@@ -459,7 +659,7 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
     // MAINTAINER NOTE: the bundled yt-dlp goes stale as sites change their
     // players; refresh it (scripts/fetch-ytdlp.sh) on every release build or URL
     // extraction will start failing in the wild. Also tracked in progress.txt.
-    let (mut rx, _child) = app
+    let (mut rx, child) = app
         .shell()
         .sidecar("yt-dlp")
         .map_err(|e| format!("could not locate yt-dlp: {e}"))?
@@ -468,7 +668,22 @@ pub async fn download_video(app: AppHandle, url: String) -> Result<String, Strin
         .map_err(|e| format!("yt-dlp failed to start: {e}"))?;
 
     let mut errors = String::new();
-    while let Some(event) = rx.recv().await {
+    loop {
+        // Race the next yt-dlp event against the cancel flag. recv() blocks while
+        // yt-dlp is stalled, so polling the flag inside the loop alone wouldn't
+        // cancel a hang; select! lets the cancel branch fire regardless.
+        let event = tokio::select! {
+            biased;
+            () = cancelled(&flag) => {
+                let _ = child.kill();
+                let _ = std::fs::remove_dir_all(&dir);
+                return Err(DOWNLOAD_CANCELLED.to_string());
+            }
+            event = rx.recv() => match event {
+                Some(event) => event,
+                None => break,
+            },
+        };
         match event {
             CommandEvent::Stdout(bytes) => {
                 if let Some(p) = parse_download_percent(&String::from_utf8_lossy(&bytes)) {

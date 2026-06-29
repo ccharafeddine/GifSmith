@@ -44,6 +44,11 @@ export function downloadVideo(url: string): Promise<string> {
   return invoke<string>("download_video", { url });
 }
 
+/** Ask the running URL download to abort. The download rejects with a cancelled error. */
+export function cancelDownload(): Promise<void> {
+  return invoke<void>("cancel_download");
+}
+
 /** Transcode an H.264 playback proxy for an unsupported codec; resolves to its path. */
 export function generateProxy(path: string): Promise<string> {
   return invoke<string>("generate_proxy", { path });
@@ -77,8 +82,11 @@ export function cancelExport(): Promise<void> {
  * Resolve the default save path (<Documents>/GifSmith/<filename>), creating the
  * folder on demand. Rejects if the Documents dir can't be resolved or created.
  */
-export function defaultSavePath(filename: string): Promise<string> {
-  return invoke<string>("default_save_path", { filename });
+export function defaultSavePath(
+  filename: string,
+  dir?: string | null,
+): Promise<string> {
+  return invoke<string>("default_save_path", { filename, dir: dir ?? null });
 }
 
 /** Move a previewed temp GIF to the user's chosen destination. */
@@ -89,4 +97,27 @@ export function savePreview(tempPath: string, destPath: string): Promise<void> {
 /** Delete a discarded preview temp GIF. */
 export function discardPreview(tempPath: string): Promise<void> {
   return invoke<void>("discard_preview", { tempPath });
+}
+
+/** One GIF in the gallery. Mirrors `ExportEntry` in src-tauri/src/commands.rs. */
+export interface ExportEntry {
+  name: string;
+  path: string;
+  bytes: number;
+  modified: number;
+}
+
+/** The effective default exports folder, for first-run display. */
+export function getExportsDir(): Promise<string> {
+  return invoke<string>("get_exports_dir");
+}
+
+/** List the GIFs in `dir` (or the default folder when omitted), newest first. */
+export function listExports(dir?: string | null): Promise<ExportEntry[]> {
+  return invoke<ExportEntry[]>("list_exports", { dir: dir ?? null });
+}
+
+/** First-frame thumbnail for a gallery GIF; resolves to a PNG data URI. */
+export function galleryThumbnail(path: string): Promise<string> {
+  return invoke<string>("gallery_thumbnail", { path });
 }

@@ -58,6 +58,11 @@ export const [previewVersion, setPreviewVersion] = createSignal(0);
 /** Byte size of the most recent export (shown in the preview). */
 export const [previewBytes, setPreviewBytes] = createSignal(0);
 
+// --- Gallery ---
+
+/** Whether the full-screen Exports gallery is open over the editor. */
+export const [galleryOpen, setGalleryOpen] = createSignal(false);
+
 // --- Crop (source pixel coordinates) ---
 
 export interface CropRect {

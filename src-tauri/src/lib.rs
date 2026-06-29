@@ -9,16 +9,21 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(commands::ExportCancel::default())
+        .manage(commands::DownloadCancel::default())
         .invoke_handler(tauri::generate_handler![
             commands::probe_video,
             commands::generate_filmstrip,
             commands::generate_proxy,
             commands::download_video,
+            commands::cancel_download,
             commands::export_preview,
             commands::cancel_export,
             commands::default_save_path,
             commands::save_preview,
-            commands::discard_preview
+            commands::discard_preview,
+            commands::get_exports_dir,
+            commands::list_exports,
+            commands::gallery_thumbnail
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

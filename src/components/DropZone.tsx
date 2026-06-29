@@ -2,8 +2,8 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { probeVideo, downloadVideo, generateFilmstrip } from "../ipc";
-import { setFilePath, setMeta, setFilmstripSrc, videoEl } from "../state";
+import { downloadVideo, cancelDownload } from "../ipc";
+import { loadSource } from "../source";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
 const VIDEO_EXTENSIONS = ["mp4", "mov", "mkv", "webm", "avi", "m4v"];
@@ -24,32 +24,17 @@ export default function DropZone() {
   const [url, setUrl] = createSignal("");
   const [downloading, setDownloading] = createSignal(false);
   const [dlProgress, setDlProgress] = createSignal(0);
+  // Set just before requesting cancellation so the resulting error is swallowed.
+  let userCancelledDownload = false;
 
   // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
-    // Release the previously-open source so it's no longer locked on disk.
-    const v = videoEl();
-    if (v) {
-      v.pause();
-      v.removeAttribute("src");
-      v.load();
-    }
     setLoading(true);
     setError(null);
-    setFilePath(path);
-    setMeta(null);
-    setFilmstripSrc(null);
     try {
-      const m = await probeVideo(path);
-      setMeta(m);
-      // Build the timeline thumbnail strip in the background (non-blocking).
-      // Resolves to a data URI so the <img> loads directly.
-      generateFilmstrip(path, m.duration_secs)
-        .then((dataUri) => setFilmstripSrc(dataUri))
-        .catch(() => setFilmstripSrc(null));
+      await loadSource(path);
     } catch (e) {
       setError(String(e));
-      setFilePath(null);
     } finally {
       setLoading(false);
     }
@@ -80,6 +65,7 @@ export default function DropZone() {
     setError(null);
     setDlProgress(0);
     setDownloading(true);
+    userCancelledDownload = false;
     const unlisten = await listen<number>("download-progress", (ev) =>
       setDlProgress(ev.payload),
     );
@@ -88,10 +74,21 @@ export default function DropZone() {
       await load(path);
       setUrl("");
     } catch (err) {
-      setError(String(err));
+      // A user-requested cancel surfaces as the cancelled error; ignore it.
+      if (!userCancelledDownload) setError(String(err));
     } finally {
       unlisten();
       setDownloading(false);
+      userCancelledDownload = false;
+    }
+  }
+
+  async function abortDownload() {
+    userCancelledDownload = true;
+    try {
+      await cancelDownload();
+    } catch {
+      // loadFromUrl's finally block clears the downloading state.
     }
   }
 
@@ -149,6 +146,9 @@ export default function DropZone() {
             <div class="progress-fill" />
           </div>
           <span class="progress-pct">{Math.round(dlProgress() * 100)}%</span>
+          <button type="button" class="cancel" onClick={abortDownload}>
+            Cancel
+          </button>
         </div>
       </Show>
       <Show when={error()}>

@@ -3,8 +3,17 @@ import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
+import Gallery from "./components/Gallery";
 import Logo from "./components/Logo";
-import { filePath, meta, previewPath, setPreviewPath, closeVideo } from "./state";
+import {
+  filePath,
+  meta,
+  previewPath,
+  setPreviewPath,
+  closeVideo,
+  galleryOpen,
+  setGalleryOpen,
+} from "./state";
 import {
   togglePlayback,
   stepFrame,
@@ -44,6 +53,8 @@ function App() {
         }
         return;
       }
+      // Gallery owns the keyboard while it's open (it has its own listener).
+      if (galleryOpen()) return;
       if (isFormControl(e.target) || !meta()) return;
 
       switch (e.key) {
@@ -79,6 +90,29 @@ function App() {
     <main class="container">
       <header class="app-header">
         <Logo />
+        <button
+          type="button"
+          class="gallery-btn"
+          title="Gallery"
+          aria-label="Gallery"
+          onClick={() => setGalleryOpen(true)}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="M21 15l-5-5L5 21" />
+          </svg>
+        </button>
       </header>
       <DropZone />
 
@@ -119,6 +153,9 @@ function App() {
         )}
       </Show>
       <PreviewModal />
+      <Show when={galleryOpen()}>
+        <Gallery />
+      </Show>
     </main>
   );
 }
