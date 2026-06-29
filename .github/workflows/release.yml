@@ -14,12 +14,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-14 # Apple Silicon
-            target: aarch64-apple-darwin
-          - platform: macos-13 # Intel
-            target: x86_64-apple-darwin
+          # One universal macOS .dmg built on the Apple Silicon runner (arm64
+          # native + x86_64 cross). Avoids the scarce, deprecated macos-13 Intel
+          # runner entirely.
+          - platform: macos-14
+            rustTargets: aarch64-apple-darwin,x86_64-apple-darwin
+            tauriTarget: universal-apple-darwin
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+            rustTargets: x86_64-pc-windows-msvc
+            tauriTarget: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -28,7 +31,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rustTargets }}
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -63,4 +66,4 @@ jobs:
           releaseName: "GifSmith ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.tauriTarget }}

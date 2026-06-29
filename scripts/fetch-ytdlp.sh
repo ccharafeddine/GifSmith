@@ -23,8 +23,11 @@ case "$TRIPLE" in
     dest="$BIN_DIR/yt-dlp-${TRIPLE}.exe"
     ;;
   *apple-darwin)
+    # yt-dlp_macos is a universal binary. Place it under BOTH darwin triples so a
+    # Tauri universal-apple-darwin build finds an arm64 and an x86_64 sidecar.
     url="$BASE/yt-dlp_macos"
-    dest="$BIN_DIR/yt-dlp-${TRIPLE}"
+    dest="$BIN_DIR/yt-dlp-aarch64-apple-darwin"
+    dest2="$BIN_DIR/yt-dlp-x86_64-apple-darwin"
     ;;
   *)
     echo "unsupported host triple: $TRIPLE" >&2
@@ -36,3 +39,9 @@ echo "Downloading yt-dlp for ${TRIPLE}..."
 curl -fL --retry 3 -o "$dest" "$url"
 chmod +x "$dest"
 echo "placed $(basename "$dest") ($(du -h "$dest" | cut -f1))"
+
+if [ -n "${dest2:-}" ]; then
+  cp "$dest" "$dest2"
+  chmod +x "$dest2"
+  echo "placed $(basename "$dest2") (universal copy)"
+fi
