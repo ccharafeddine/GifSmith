@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #
 # build-ffmpeg-macos.sh — compile a minimal LGPL ffmpeg + ffprobe from source
-# for BOTH macOS architectures (arm64 native + x86_64 cross), then lipo-merge
-# each into a single universal binary placed in src-tauri/binaries with the
-# `universal-apple-darwin` target-triple suffix. A Tauri universal-apple-darwin
-# build resolves externalBin to `binaries/<name>-universal-apple-darwin` and
-# does NOT merge per-arch sidecars itself, so we provide the fat binary.
+# for BOTH macOS architectures (arm64 native + x86_64 cross). A Tauri
+# universal-apple-darwin build needs THREE sidecar names per tool, used at two
+# stages: each per-arch sub-build's build script validates the matching
+# `binaries/<name>-{aarch64,x86_64}-apple-darwin`, and the final bundle copies a
+# pre-made fat `binaries/<name>-universal-apple-darwin` (Tauri does not lipo the
+# per-arch pair itself). So we keep both per-arch binaries AND lipo a universal.
 #
 # Why compile instead of download: no LGPL static macOS build is published, and
 # evermeet.cx (and most prebuilts) are GPL, which conflicts with GifSmith's MIT
@@ -37,8 +38,10 @@ curl -fL --retry 3 -o ffmpeg.tar.xz \
 tar xf ffmpeg.tar.xz
 SRC="$WORK/ffmpeg-${FFMPEG_VERSION}"
 
-# Build one arch into its own out-of-tree dir. $1 is a short arch label used for
-# the build directory; $2.. are extra configure args (cross flags).
+# Build one arch into its own out-of-tree dir and copy its ffmpeg/ffprobe into
+# BIN_DIR under the matching Rust target triple (needed by the per-arch build
+# script). $1 is a short arch label, $2 the target triple, $3.. extra configure
+# args (cross flags).
 #
 # --enable-videotoolbox makes the macOS system H.264 encoder (h264_videotoolbox)
 # an explicit, required part of the build. The playback-proxy command uses it on
@@ -46,9 +49,9 @@ SRC="$WORK/ffmpeg-${FFMPEG_VERSION}"
 # this stays LGPL-clean and is available for both arches. Configure fails loudly
 # if it can't be enabled.
 build_arch() {
-  local label="$1"; shift
+  local label="$1" triple="$2"; shift 2
   local builddir="$WORK/build-${label}"
-  echo "=== Configuring ffmpeg for ${label} ==="
+  echo "=== Configuring ffmpeg for ${label} (${triple}) ==="
   mkdir -p "$builddir"
   cd "$builddir"
   "$SRC/configure" \
@@ -63,34 +66,39 @@ build_arch() {
     "$@"
   make -j"$(sysctl -n hw.ncpu)"
   make install
-  echo "Built ffmpeg + ffprobe for ${label}."
+  for tool in ffmpeg ffprobe; do
+    cp "$builddir/out/bin/${tool}" "$BIN_DIR/${tool}-${triple}"
+    chmod +x "$BIN_DIR/${tool}-${triple}"
+  done
+  echo "Built ffmpeg + ffprobe for ${triple}."
   cd "$WORK"
 }
 
 # Native arm64.
-build_arch "arm64"
+build_arch "arm64" "aarch64-apple-darwin"
 
 # Cross x86_64. --enable-cross-compile skips run-time configure checks (the
 # x86_64 test binaries can't execute on the arm64 host); clang targets x86_64
 # against the same universal SDK.
-build_arch "x86_64" \
+build_arch "x86_64" "x86_64-apple-darwin" \
   --enable-cross-compile \
   --arch=x86_64 \
   --target-os=darwin \
   --cc="clang -arch x86_64" \
   --extra-ldflags="-arch x86_64"
 
-# Fuse each tool's two single-arch builds into one fat universal binary named
-# for the universal target triple, which is what Tauri's bundler copies.
+# Fuse the two single-arch binaries into one fat universal binary named for the
+# universal target triple, which is what Tauri's final bundle step copies.
 for tool in ffmpeg ffprobe; do
   out="$BIN_DIR/${tool}-${UNIVERSAL_TRIPLE}"
   lipo -create \
-    "$WORK/build-arm64/out/bin/${tool}" \
-    "$WORK/build-x86_64/out/bin/${tool}" \
+    "$BIN_DIR/${tool}-aarch64-apple-darwin" \
+    "$BIN_DIR/${tool}-x86_64-apple-darwin" \
     -output "$out"
   chmod +x "$out"
   echo "lipo'd universal ${tool}:"
   lipo -info "$out"
 done
 
-ls -la "$BIN_DIR"/ffmpeg-"${UNIVERSAL_TRIPLE}" "$BIN_DIR"/ffprobe-"${UNIVERSAL_TRIPLE}"
+echo "All macOS ffmpeg/ffprobe sidecars:"
+ls -la "$BIN_DIR"/ffmpeg-*-apple-darwin "$BIN_DIR"/ffprobe-*-apple-darwin
