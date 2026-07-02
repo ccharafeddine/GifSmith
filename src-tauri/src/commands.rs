@@ -397,7 +397,11 @@ pub async fn generate_filmstrip(
 ) -> Result<String, String> {
     const COUNT: u32 = 24;
     const HEIGHT: u32 = 144;
-    let dur = if duration_secs > 0.05 { duration_secs } else { 1.0 };
+    let dur = if duration_secs > 0.05 {
+        duration_secs
+    } else {
+        1.0
+    };
     let temp = filmstrip_path();
     let temp_str = temp.to_string_lossy().into_owned();
 
@@ -550,7 +554,10 @@ async fn download_direct(
         .await
         .map_err(|_| "Couldn't reach that link. Check the URL and your connection.".to_string())?;
     if !resp.status().is_success() {
-        return Err(format!("the server returned {} for that link", resp.status()));
+        return Err(format!(
+            "the server returned {} for that link",
+            resp.status()
+        ));
     }
 
     let total = resp.content_length();
@@ -581,6 +588,38 @@ async fn download_direct(
     }
 
     Ok(out.to_string_lossy().into_owned())
+}
+
+/// True if `url` parses as an http or https URL. Any other scheme (`file`,
+/// `ftp`, `javascript`, ...) is rejected before it can reach reqwest or yt-dlp,
+/// so a paste can only ever trigger a network fetch of a web resource.
+fn is_http_url(url: &str) -> bool {
+    reqwest::Url::parse(url).is_ok_and(|u| matches!(u.scheme(), "http" | "https"))
+}
+
+/// Assemble the yt-dlp argument vector. The URL is placed last, immediately
+/// preceded by a `--` end-of-options separator: yt-dlp parses its own argv, and
+/// without the separator a pasted string beginning with `-` (e.g. `--exec`,
+/// which runs an arbitrary command) would be taken as a flag rather than a URL.
+fn build_ytdlp_args(output_template: &str, ffmpeg_dir: Option<&Path>, url: &str) -> Vec<String> {
+    let mut args: Vec<String> = vec![
+        "--no-playlist".into(),
+        "--no-part".into(),
+        "--newline".into(),
+        "-f".into(),
+        // Prefer an H.264 mp4 the webview can play; fall back to anything.
+        "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]/bestvideo[height<=1080][ext=mp4]/best[ext=mp4]/best".into(),
+        "-o".into(),
+        output_template.into(),
+    ];
+    // Let yt-dlp use our ffmpeg for any remux/merge it needs.
+    if let Some(dir) = ffmpeg_dir {
+        args.push("--ffmpeg-location".into());
+        args.push(dir.to_string_lossy().into_owned());
+    }
+    args.push("--".into());
+    args.push(url.into());
+    args
 }
 
 /// Map a yt-dlp stderr dump to a clear, user-facing message. Raw stderr is kept
@@ -628,6 +667,12 @@ pub async fn download_video(
     let flag = cancel.0.clone();
     flag.store(false, Ordering::SeqCst);
 
+    // Reject anything that isn't a web link before it can reach reqwest or the
+    // yt-dlp sidecar. Guards against file:// path reads and odd schemes.
+    if !is_http_url(&url) {
+        return Err("Enter an http or https video link.".to_string());
+    }
+
     // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
     // works even for hosts yt-dlp has no extractor for.
     if let Some(ext) = direct_media_extension(&url) {
@@ -638,23 +683,10 @@ pub async fn download_video(
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
     let template = dir.join("source.%(ext)s");
-
-    let mut args: Vec<String> = vec![
-        "--no-playlist".into(),
-        "--no-part".into(),
-        "--newline".into(),
-        "-f".into(),
-        // Prefer an H.264 mp4 the webview can play; fall back to anything.
-        "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]/bestvideo[height<=1080][ext=mp4]/best[ext=mp4]/best".into(),
-        "-o".into(),
-        template.to_string_lossy().into_owned(),
-    ];
-    // Let yt-dlp use our ffmpeg for any remux/merge it needs.
-    if let Some(dir) = ffmpeg_path().ok().and_then(|p| p.parent().map(PathBuf::from)) {
-        args.push("--ffmpeg-location".into());
-        args.push(dir.to_string_lossy().into_owned());
-    }
-    args.push(url);
+    let ffmpeg_dir = ffmpeg_path()
+        .ok()
+        .and_then(|p| p.parent().map(PathBuf::from));
+    let args = build_ytdlp_args(&template.to_string_lossy(), ffmpeg_dir.as_deref(), &url);
 
     // MAINTAINER NOTE: the bundled yt-dlp goes stale as sites change their
     // players; refresh it (scripts/fetch-ytdlp.sh) on every release build or URL
@@ -724,13 +756,57 @@ fn ffmpeg_path() -> io::Result<PathBuf> {
     let dir = exe
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "current exe has no parent dir"))?;
-    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let name = if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    };
     Ok(dir.join(name))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{direct_media_extension, friendly_ytdlp_error};
+    use super::{build_ytdlp_args, direct_media_extension, friendly_ytdlp_error, is_http_url};
+
+    #[test]
+    fn accepts_http_and_https_urls() {
+        assert!(is_http_url("https://example.com/v.mp4"));
+        assert!(is_http_url("http://example.com/watch?v=abc"));
+    }
+
+    #[test]
+    fn rejects_non_http_urls() {
+        // file:// would otherwise let a paste read a local path over the URL box.
+        assert!(!is_http_url("file:///etc/passwd"));
+        assert!(!is_http_url("ftp://example.com/v.mp4"));
+        assert!(!is_http_url("javascript:alert(1)"));
+        assert!(!is_http_url("not a url"));
+    }
+
+    #[test]
+    fn ytdlp_url_is_last_and_after_end_of_options() {
+        // A URL that looks like a dangerous flag must survive as a plain operand.
+        let evil = "--exec=calc.exe";
+        let args = build_ytdlp_args("out.%(ext)s", None, evil);
+        assert_eq!(args.last().unwrap(), evil);
+        let sep = args.len() - 2;
+        assert_eq!(args[sep], "--", "URL must be preceded by an -- separator");
+        // The evil string must never appear as its own argument before the guard.
+        assert!(!args[..sep].iter().any(|a| a == evil));
+    }
+
+    #[test]
+    fn ytdlp_ffmpeg_location_included_when_present() {
+        let args = build_ytdlp_args(
+            "out.%(ext)s",
+            Some(std::path::Path::new("/bin")),
+            "https://x/y",
+        );
+        assert!(args.iter().any(|a| a == "--ffmpeg-location"));
+        // Even with the extra flags, the URL stays last behind the separator.
+        assert_eq!(args.last().unwrap(), "https://x/y");
+        assert_eq!(args[args.len() - 2], "--");
+    }
 
     #[test]
     fn detects_direct_media_links() {
@@ -748,7 +824,10 @@ mod tests {
     #[test]
     fn rejects_non_media_links() {
         // A watch page, not a file: must fall through to yt-dlp.
-        assert_eq!(direct_media_extension("https://youtube.com/watch?v=abc"), None);
+        assert_eq!(
+            direct_media_extension("https://youtube.com/watch?v=abc"),
+            None
+        );
         // Unsupported extension.
         assert_eq!(direct_media_extension("https://x.com/clip.gif"), None);
         // No extension at all.
@@ -766,7 +845,10 @@ mod tests {
     #[test]
     fn maps_network_error() {
         let msg = friendly_ytdlp_error("ERROR: Unable to download webpage: timed out");
-        assert_eq!(msg, "Couldn't reach that link. Check the URL and your connection.");
+        assert_eq!(
+            msg,
+            "Couldn't reach that link. Check the URL and your connection."
+        );
     }
 
     #[test]
