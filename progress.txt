@@ -482,6 +482,34 @@ RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
   - GOTCHA: tauri's SVG parser (usvg) rejects "--" inside XML comments
     (InvalidComment); keep double-hyphens out of icon SVG comments.
 
+[Audit + v1.0.0 release] (user request, 2026-07-02)
+  - Full logic + security audit of the shipped app (post v0.1.0).
+  - SECURITY FIX (commands.rs): yt-dlp URL was a trailing positional with no
+    end-of-options separator, so a pasted `--exec=<cmd>`-style string could be
+    parsed by yt-dlp as a flag (arbitrary command exec). Now build_ytdlp_args
+    inserts `--` before the URL; is_http_url() rejects non-http(s) schemes
+    (file://, ftp://, javascript:) before reqwest/yt-dlp. Unit-tested.
+  - LOGIC FIXES: Timeline IN/OUT clamp could invert on sub-1s clips (negative
+    startSecs into ffmpeg -ss); guarded bounds + encoder clamps start >= 0.
+    Stale-async races: a filmstrip (source.ts) or playback proxy (VideoPlayer)
+    from a previous source could resolve late and paint the wrong clip; both
+    now gate their setters on filePath() still matching.
+  - Audit CLEAN: no XSS (Solid auto-escapes, no unsafe sinks), no shell
+    injection (all sidecars use arg arrays), clippy -D warnings clean.
+  - NOTED, not changed (risk of untested webview breakage): csp is null and
+    assetProtocol scope is ["**"]. Both are broad; narrowing needs a live-build
+    test pass. Recommended follow-up, not a v1.0.0 blocker.
+  - CI: new .github/workflows/ci.yml (push/PR to main) = rust fmt+clippy+test
+    (tauri linux deps + stub sidecars/dist for compile-time checks) and
+    frontend tsc+build. Added `typecheck` npm script. Green.
+  - Rust tests 12 -> 16 (added is_http_url, build_ytdlp_args coverage).
+  - RELEASE: bumped to 1.0.0 (Cargo.toml/lock, tauri.conf.json, package.json/
+    lock), tagged v1.0.0. First release run failed at the create-release API
+    ("Resource not accessible by integration") because the repo's default
+    workflow token perms had been set to read-only; both platforms COMPILED
+    fine. Fixed by restoring default_workflow_permissions=write (gh api) and
+    re-running. release.yml unchanged (already declares contents: write).
+
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
   - Repo: https://github.com/ccharafeddine/GifSmith
