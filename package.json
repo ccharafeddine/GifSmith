@@ -1,12 +1,13 @@
 {
   "name": "gifsmith",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "",
   "type": "module",
   "scripts": {
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "serve": "vite preview",
     "tauri": "tauri"
   },
