@@ -65,10 +65,14 @@ export default function Timeline() {
     const apply = (clientX: number) => {
       const t = timeFromClientX(clientX);
       if (kind === "in") {
-        setInPoint(clamp(t, viewStart(), outPoint() - MIN_SELECTION));
+        // Guard the upper bound: on a clip shorter than MIN_SELECTION,
+        // outPoint() - MIN_SELECTION goes negative and would drag IN below 0.
+        const hi = Math.max(viewStart(), outPoint() - MIN_SELECTION);
+        setInPoint(clamp(t, viewStart(), hi));
         if (currentTime() < inPoint()) seekTo(inPoint());
       } else if (kind === "out") {
-        setOutPoint(clamp(t, inPoint() + MIN_SELECTION, viewEnd()));
+        const lo = Math.min(viewEnd(), inPoint() + MIN_SELECTION);
+        setOutPoint(clamp(t, lo, viewEnd()));
         if (currentTime() > outPoint()) seekTo(outPoint());
       } else {
         seekTo(clamp(t, inPoint(), outPoint()));

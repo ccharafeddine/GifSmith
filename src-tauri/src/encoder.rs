@@ -102,8 +102,15 @@ pub fn export_gif(
         even(h)
     };
     let frame_bytes = out_w as usize * out_h as usize * 4;
-    let duration = (params.end_secs - params.start_secs).max(0.0);
-    let speed = if params.speed > 0.0 { params.speed } else { 1.0 };
+    // Clamp the seek to >= 0: a negative start (e.g. a trim handle dragged past
+    // zero on a sub-second clip) would pass ffmpeg a nonsensical `-ss`.
+    let start_secs = params.start_secs.max(0.0);
+    let duration = (params.end_secs - start_secs).max(0.0);
+    let speed = if params.speed > 0.0 {
+        params.speed
+    } else {
+        1.0
+    };
     let pts_factor = 1.0 / speed;
     // Filter order: retime (setpts) -> resample (fps) -> crop -> scale. crop
     // must precede scale; setpts must precede fps.
@@ -127,7 +134,7 @@ pub fn export_gif(
             "error",
             "-nostdin",
             "-ss",
-            &format!("{:.6}", params.start_secs),
+            &format!("{start_secs:.6}"),
             "-t",
             &format!("{duration:.6}"),
             "-i",

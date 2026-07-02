@@ -1,5 +1,5 @@
 import { probeVideo, generateFilmstrip } from "./ipc";
-import { setFilePath, setMeta, setFilmstripSrc, videoEl } from "./state";
+import { filePath, setFilePath, setMeta, setFilmstripSrc, videoEl } from "./state";
 
 /**
  * Load a path as the editor's source: release the previously-open file (so it's
@@ -25,10 +25,16 @@ export async function loadSource(path: string): Promise<void> {
     const m = await probeVideo(path);
     setMeta(m);
     // Build the timeline thumbnail strip in the background (non-blocking).
-    // Resolves to a data URI so the <img> loads directly.
+    // Resolves to a data URI so the <img> loads directly. Guard against a slow
+    // strip from a previous load resolving after the source was switched: only
+    // apply it if this path is still the active one.
     generateFilmstrip(path, m.duration_secs)
-      .then((dataUri) => setFilmstripSrc(dataUri))
-      .catch(() => setFilmstripSrc(null));
+      .then((dataUri) => {
+        if (filePath() === path) setFilmstripSrc(dataUri);
+      })
+      .catch(() => {
+        if (filePath() === path) setFilmstripSrc(null);
+      });
   } catch (e) {
     setFilePath(null);
     throw e;

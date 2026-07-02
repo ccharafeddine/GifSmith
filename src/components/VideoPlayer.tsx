@@ -61,10 +61,18 @@ export default function VideoPlayer() {
     if (!p) return;
     setProxyBuilding(true);
     setProxyFailed(false);
+    // Guard against a proxy for a previous file resolving after the user switched
+    // sources: applying it would show the old clip over the new metadata.
     generateProxy(p)
-      .then((proxyPath) => setProxySrc(convertFileSrc(proxyPath)))
-      .catch(() => setProxyFailed(true))
-      .finally(() => setProxyBuilding(false));
+      .then((proxyPath) => {
+        if (filePath() === p) setProxySrc(convertFileSrc(proxyPath));
+      })
+      .catch(() => {
+        if (filePath() === p) setProxyFailed(true);
+      })
+      .finally(() => {
+        if (filePath() === p) setProxyBuilding(false);
+      });
   }
 
   // New source: reset transport, trim, zoom, crop, and bounce to defaults.
