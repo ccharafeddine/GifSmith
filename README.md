@@ -37,10 +37,15 @@ build of [FFmpeg](https://ffmpeg.org) for decoding.
   opening another
 - Exports default to a **GifSmith/Exports** folder in your Documents (created on
   first save); you're free to save anywhere
+- An **Exports gallery** (the header button) to browse past GIFs and reopen one
+  as the source for a new edit
+- **Plays codecs the system can't**: for formats the webview won't decode (HEVC,
+  ProRes, ...) GifSmith builds a lightweight transcoded preview so trimming still
+  works; export always uses the original file
 - High-quality `gifski` encoding, streamed frame-by-frame with no intermediate
   files (a URL import downloads to a temp file that's deleted when you quit)
 - Dark, minimal interface
-- Native binaries for macOS and Windows
+- Native binaries for macOS (universal) and Windows
 
 ## Keyboard shortcuts
 
@@ -59,8 +64,9 @@ Download the latest installer from the
 
 - **Windows**: the `.msi` (or setup `.exe`). Windows SmartScreen may warn on an
   unsigned app; choose **More info → Run anyway**.
-- **macOS**: the `.dmg` for your chip (Apple Silicon or Intel). The app is
-  unsigned, so the first launch needs the Gatekeeper workaround:
+- **macOS**: the universal `.dmg` (runs natively on both Apple Silicon and
+  Intel). The app is unsigned, so the first launch needs the Gatekeeper
+  workaround:
 
   > **Right-click** (or Control-click) the app in Applications → **Open** →
   > **Open** again in the dialog. You only need to do this once.
@@ -104,3 +110,27 @@ sidecar processes (never linked into the app), keep their own licenses:
 
 [MIT](LICENSE) © Chafic Charafeddine. Bundled FFmpeg is LGPL and yt-dlp is
 public domain, as noted above.
+
+## Release notes
+
+### v1.0.0
+
+The first stable release.
+
+- **Universal macOS build**: a single `.dmg` runs natively on both Apple Silicon
+  and Intel, replacing the earlier per-chip downloads.
+- **URL import** from YouTube and other sites (bundled `yt-dlp`), or a direct
+  link to a video file over HTTP, with a **Cancel** button for downloads in
+  progress.
+- **Timeline** with filmstrip thumbnails and zoomable iOS-style trim handles;
+  **crop** (free-form or 16:9 / 9:16 / 1:1), **speed** (0.5x-2x), and
+  **boomerang**, all with live preview.
+- **Export presets** (Web, GIPHY, X, Discord) with a live frame-count and size
+  estimate, then **Preview → Save / Re-export / Discard** before committing.
+- **Exports gallery** to browse past GIFs and reopen one for a new edit.
+- **Playback proxy** so videos in codecs the webview can't decode (HEVC,
+  ProRes, ...) still preview; export always uses the original.
+- Security: the URL import is restricted to `http(s)` links and hardened against
+  argument injection into the downloader.
+- Fixes: trim-handle edge cases on very short clips, and stale-preview races when
+  switching sources quickly.
