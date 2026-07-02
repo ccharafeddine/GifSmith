@@ -45,17 +45,21 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # Tauri needs the system webview/GTK libs to compile on Linux.
+      # Tauri needs the system webview/GTK libs to compile on Linux. This is the
+      # official set for Ubuntu 24.04 (ubuntu-latest); libappindicator3-dev is
+      # gone there and conflicts, so use only the ayatana package.
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
+            libayatana-appindicator3-dev \
             librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
             patchelf \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev
+            build-essential \
+            file
 
       # Two compile-time checks in the Tauri crate need on-disk artifacts that CI
       # doesn't otherwise produce, and that the unit tests never actually use:
