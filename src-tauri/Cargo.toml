@@ -1,6 +1,6 @@
 [package]
 name = "gifsmith"
-version = "0.1.0"
+version = "1.0.0"
 description = "Turn a slice of video into a high-quality animated GIF."
 authors = ["Chafic Charafeddine"]
 edition = "2021"
