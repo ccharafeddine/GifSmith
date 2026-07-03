@@ -23,7 +23,8 @@ pub fn run() {
             commands::discard_preview,
             commands::get_exports_dir,
             commands::list_exports,
-            commands::gallery_thumbnail
+            commands::gallery_thumbnail,
+            commands::check_for_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

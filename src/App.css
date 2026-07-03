@@ -28,18 +28,24 @@ body {
   gap: var(--s4);
 }
 
+/* Three columns: an empty spacer, the centered wordmark, and the action
+   cluster. The outer columns are equal (1fr) so the logo stays truly centered
+   regardless of how many buttons sit on the right. */
 .app-header {
-  position: relative;
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
 }
 
-/* Top-right gallery link. Absolutely placed so the wordmark stays centered. */
-.gallery-btn {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s1);
+}
+
+/* Shared header icon button (gallery + settings gearwheel). */
+.icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -51,9 +57,113 @@ body {
   cursor: pointer;
 }
 
-.gallery-btn:hover {
+.icon-btn:hover {
   color: var(--fg);
   background: var(--bg-control);
+}
+
+/* The gearwheel highlights to the accent on hover and while its panel is open. */
+.settings-btn:hover,
+.settings-btn.active {
+  color: var(--accent);
+  background: var(--bg-control);
+}
+
+/* ---- Settings popover ------------------------------------------------- */
+
+/* Anchors the popover under the gearwheel, right-aligned to it. */
+.settings-anchor {
+  position: relative;
+  display: flex;
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + var(--s2));
+  right: 0;
+  z-index: 30; /* above the editor and preview modal (z-index 10) */
+  width: 300px;
+  max-width: min(300px, calc(100vw - var(--s5)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  text-align: left;
+}
+
+.settings-version {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: var(--fs-num);
+}
+
+.settings-version-num {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-update {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.settings-check {
+  align-self: flex-start;
+}
+
+.settings-status {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: var(--fs-num);
+}
+
+.settings-status.error {
+  color: var(--danger);
+  font-family: var(--font-mono);
+}
+
+.settings-available {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+/* Release notes: scrollable, preserves the release body's line breaks. */
+.settings-notes {
+  margin: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: var(--s2) var(--s3);
+  background: var(--bg-control);
+  border-radius: var(--r-control);
+  color: var(--fg-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-num);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.settings-available .primary {
+  align-self: flex-start;
+}
+
+.settings-startup {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--fg-2);
+  font-size: var(--fs-num);
+  cursor: pointer;
+}
+
+.settings-startup input {
+  cursor: pointer;
 }
 
 .empty-state {

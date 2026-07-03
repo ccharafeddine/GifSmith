@@ -121,3 +121,23 @@ export function listExports(dir?: string | null): Promise<ExportEntry[]> {
 export function galleryThumbnail(path: string): Promise<string> {
   return invoke<string>("gallery_thumbnail", { path });
 }
+
+/** Result of an update check. Mirrors `UpdateInfo` in src-tauri/src/commands.rs. */
+export interface UpdateInfo {
+  /** This build's version (from CARGO_PKG_VERSION). */
+  current: string;
+  /** Latest published release version, leading `v` stripped. */
+  latest: string;
+  /** True when `latest` is a strictly higher version than `current`. */
+  is_newer: boolean;
+  /** Release notes (the GitHub release body), may be empty. */
+  notes: string;
+  /** Release page URL to open for the download. */
+  url: string;
+}
+
+/** Ask GitHub for the latest release (network runs in Rust). Prompt-only: never
+ * downloads or installs, just reports what's available. */
+export function checkForUpdate(): Promise<UpdateInfo> {
+  return invoke<UpdateInfo>("check_for_update");
+}

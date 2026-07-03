@@ -174,6 +174,17 @@ Each step ends with something runnable. Commit at the end of each step.
 16. **Release workflow.** `.github/workflows/release.yml` using `tauri-apps/tauri-action`. Builds on git tag push (`v*`), creates a draft GitHub Release with `.dmg` and `.msi` attached.
 17. **README + screenshots.** Install instructions, the Mac Gatekeeper right-click-Open workaround, FFmpeg LGPL note, screenshots in light and dark mode.
 
+## Roadmap (post v1.0.0)
+
+All 17 build-plan steps and the v1.0.0 release are done. The next release cycle:
+
+1. **Settings gearwheel + auto-update.** SHIPPED in v1.0.1. A gearwheel in the header opens a settings popover with a version line, a "Check for updates" button (checking / up-to-date / update-available states), and an opt-in "check on startup" toggle. A `check_for_update` Rust command hits the GitHub Releases API (`reqwest`, in Rust so no CSP work), compares the latest tag against `CARGO_PKG_VERSION` with a numeric-tuple parse, and returns `{ current, latest, is_newer, notes, url }`. Prompt-only: an available update shows the release notes and a Download button that opens the release page via the opener plugin. No silent download or install.
+2. **Finish the app-icon recolor** to the violet/cyan identity (progress notes still flag the mark as the old gold).
+3. **Optional: advanced quality control.** Expose gifski's dithering / lossy level as an advanced setting alongside the quality slider.
+4. **Internal: refactor `state.ts`.** It sits at ~15 signals; move it to a Solid store before adding more surface.
+
+Horizon (not scheduled): code-signing + notarization, done suite-wide (Apple Developer ID for the `.dmg`, a signing cert for the `.msi`).
+
 ## Gotchas
 
 - **FFmpeg licensing.** Bundle the LGPL build only. A GPL FFmpeg would force the whole app to GPL, conflicting with MIT. Document the bundled FFmpeg's license in README.

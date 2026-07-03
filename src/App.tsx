@@ -4,6 +4,7 @@ import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
 import Gallery from "./components/Gallery";
+import SettingsPanel from "./components/SettingsPanel";
 import Logo from "./components/Logo";
 import {
   filePath,
@@ -13,7 +14,10 @@ import {
   closeVideo,
   galleryOpen,
   setGalleryOpen,
+  settingsOpen,
+  setSettingsOpen,
 } from "./state";
+import { checkOnStartupEnabled, runUpdateCheck } from "./update";
 import {
   togglePlayback,
   stepFrame,
@@ -42,6 +46,14 @@ function isFormControl(el: EventTarget | null): boolean {
 
 function App() {
   onMount(() => {
+    // Opt-in silent update check: run on mount, only surface UI if a newer
+    // release exists (open the settings popover so the user sees it).
+    if (checkOnStartupEnabled()) {
+      void runUpdateCheck().then((status) => {
+        if (status === "available") setSettingsOpen(true);
+      });
+    }
+
     const onKey = (e: KeyboardEvent) => {
       // Modal open: only Esc, which discards the preview and closes it.
       if (previewPath()) {
@@ -50,6 +62,14 @@ function App() {
           const p = previewPath();
           setPreviewPath(null);
           if (p) void discardPreview(p).catch(() => undefined);
+        }
+        return;
+      }
+      // Settings popover open: Esc closes it, otherwise let its controls be.
+      if (settingsOpen()) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setSettingsOpen(false);
         }
         return;
       }
@@ -89,30 +109,63 @@ function App() {
   return (
     <main class="container">
       <header class="app-header">
+        <div class="header-spacer" />
         <Logo />
-        <button
-          type="button"
-          class="gallery-btn"
-          title="Gallery"
-          aria-label="Gallery"
-          onClick={() => setGalleryOpen(true)}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
+        <div class="header-actions">
+          <button
+            type="button"
+            class="icon-btn"
+            title="Gallery"
+            aria-label="Gallery"
+            onClick={() => setGalleryOpen(true)}
           >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-        </button>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+          </button>
+          <div class="settings-anchor">
+            <button
+              type="button"
+              class="icon-btn settings-btn"
+              classList={{ active: settingsOpen() }}
+              title="Settings"
+              aria-label="Settings"
+              aria-haspopup="dialog"
+              aria-expanded={settingsOpen()}
+              onClick={() => setSettingsOpen(!settingsOpen())}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <Show when={settingsOpen()}>
+              <SettingsPanel />
+            </Show>
+          </div>
+        </div>
       </header>
       <DropZone />
 

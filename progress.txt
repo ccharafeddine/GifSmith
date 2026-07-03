@@ -510,6 +510,45 @@ RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
     fine. Fixed by restoring default_workflow_permissions=write (gh api) and
     re-running. release.yml unchanged (already declares contents: write).
 
+[Roadmap logged + Settings/update check] (user request, 2026-07-03)
+  - ROADMAP to next release written into README.md ("## Roadmap") and CLAUDE.md
+    ("## Roadmap (post v1.0.0)"): (1) settings gearwheel + auto-update [this
+    session], (2) finish app-icon recolor to violet/cyan, (3) optional gifski
+    dithering/lossy advanced control, (4) refactor state.ts (~15 signals) to a
+    store. Horizon: code-signing + notarization suite-wide.
+  - VERSION: already 1.0.0 across Cargo.toml/tauri.conf.json/package.json/lock,
+    matching tag v1.0.0 (the earlier "chore: bump version to 1.0.0" commit did
+    it). The user's "Cargo.toml still says 0.1.0" was stale; nothing to bump.
+  - ITEM 1 built (settings gearwheel + prompt-only updater):
+    * commands.rs: check_for_update async command. reqwest (0.13, already in
+      tree, native-tls) GETs api.github.com/repos/ccharafeddine/GifSmith/
+      releases/latest with User-Agent + Accept: application/vnd.github+json.
+      No reqwest `json` feature -> parse the body with serde_json. Returns
+      UpdateInfo { current, latest, is_newer, notes, url }. parse_version/
+      is_newer do a numeric-tuple compare (strip leading v, digits-only per
+      component) so 1.10 > 1.9. Network in Rust, not the webview (no CSP work).
+      3 new unit tests (parse_version, is_newer both ways) -> 19 tests total.
+    * lib.rs: registered check_for_update. capabilities: added
+      core:app:allow-version (getVersion) + opener:allow-open-url (Download btn).
+    * Frontend: ipc.checkForUpdate + UpdateInfo. src/update.ts holds shared
+      update state (status idle|checking|current|available|error, info, error)
+      + runUpdateCheck() + localStorage "check on startup" pref (default off).
+      state.ts: settingsOpen signal. components/SettingsPanel.tsx: popover with
+      version line (getVersion), Check-for-updates button w/ states, on
+      available shows notes + Download (opener openUrl), startup toggle. Closes
+      on outside pointerdown + Esc.
+    * App.tsx: header is now a 3-col grid (spacer / centered logo / actions).
+      NOTE: the existing top-right Gallery button lives in the right actions
+      cluster next to the new gearwheel (reconciled the user's "spacer / logo /
+      gearwheel" with the already-present gallery btn; logo stays centered via
+      equal 1fr outer columns). Shared .icon-btn style; gear hovers to --accent.
+      Startup check runs silent on mount if enabled, opens the panel only if an
+      update exists.
+  - GATES GREEN: npm run typecheck + build clean, cargo clippy --all-targets
+    -D warnings clean, cargo test 19/19.
+  - NOT runtime-verified (GUI window blocks in this env): needs `npm run tauri
+    dev`. See handoff for exact test steps.
+
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
   - Repo: https://github.com/ccharafeddine/GifSmith

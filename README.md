@@ -106,12 +106,33 @@ sidecar processes (never linked into the app), keep their own licenses:
 - **Font**: Syne (SIL Open Font License), bundled in `src/assets/fonts` with its
   license file. No web-font requests are made.
 
+## Roadmap
+
+Settings + update check shipped in v1.0.1. Next up:
+
+1. **App-icon recolor** finished in the violet/cyan identity.
+2. **Advanced quality control** (optional): gifski dithering / lossy level.
+3. **Internal:** move `state.ts` to a Solid store as it grows.
+
+Not scheduled: code-signing and notarization for both platforms (to drop the
+Gatekeeper / SmartScreen prompts).
+
 ## License
 
 [MIT](LICENSE) © Chafic Charafeddine. Bundled FFmpeg is LGPL and yt-dlp is
 public domain, as noted above.
 
 ## Release notes
+
+### v1.0.1
+
+- **Settings + update check.** A gearwheel in the header opens a settings popover
+  with the app version and a **Check for updates** button that asks GitHub for the
+  latest release (up-to-date / update-available states). An opt-in **Check on
+  startup** toggle runs the check silently on launch and only surfaces when a
+  newer version exists. It's prompt-only: an available update shows the release
+  notes and a **Download** button that opens the release page. GifSmith never
+  downloads or installs an update on its own.
 
 ### v1.0.0
 

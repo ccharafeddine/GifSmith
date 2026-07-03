@@ -5,7 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:app:allow-version",
     "opener:default",
+    "opener:allow-open-url",
     "dialog:allow-open",
     "dialog:allow-save",
     {

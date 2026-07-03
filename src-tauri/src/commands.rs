@@ -749,6 +749,128 @@ pub async fn download_video(
     }
 }
 
+/// GitHub Releases API endpoint for this repo's latest published release. The
+/// slug is the real `ccharafeddine/GifSmith` remote (see release.yml / git
+/// origin), not a guess.
+const RELEASES_API: &str = "https://api.github.com/repos/ccharafeddine/GifSmith/releases/latest";
+
+/// Human-facing releases page, used as a fallback download URL if the API
+/// response omits `html_url`.
+const RELEASES_PAGE: &str = "https://github.com/ccharafeddine/GifSmith/releases/latest";
+
+/// Result of an update check. `current` is this build's version, `latest` is the
+/// newest published tag (leading `v` stripped), `is_newer` is the numeric-tuple
+/// comparison, `notes` is the release body, and `url` opens the release page.
+#[derive(serde::Serialize)]
+pub struct UpdateInfo {
+    pub current: String,
+    pub latest: String,
+    pub is_newer: bool,
+    pub notes: String,
+    pub url: String,
+}
+
+/// Split a version like `v1.10.2` or `1.2.0-beta` into numeric components,
+/// ignoring a leading `v` and stopping each component at its first non-digit
+/// (so `2-beta` reads as `2`). Missing components are treated as 0 by the caller.
+fn parse_version(v: &str) -> Vec<u64> {
+    v.trim()
+        .trim_start_matches(['v', 'V'])
+        .split('.')
+        .map(|part| {
+            let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+            digits.parse().unwrap_or(0)
+        })
+        .collect()
+}
+
+/// True when `latest` is a strictly higher version than `current`, compared
+/// component-by-component as integers so `1.10.0` correctly beats `1.9.0` (a
+/// plain string compare would not). Mirrors Portfolio Analyzer's `is_newer`.
+fn is_newer(current: &str, latest: &str) -> bool {
+    let a = parse_version(current);
+    let b = parse_version(latest);
+    for i in 0..a.len().max(b.len()) {
+        let x = a.get(i).copied().unwrap_or(0);
+        let y = b.get(i).copied().unwrap_or(0);
+        if y != x {
+            return y > x;
+        }
+    }
+    false
+}
+
+/// Check GitHub for a newer release. Does the network in Rust (not the webview)
+/// so no CSP work is needed. Prompt-only: this never downloads or installs
+/// anything, it just reports what the latest published release is.
+///
+/// # Errors
+/// Returns a user-facing message if GitHub can't be reached, returns a non-2xx
+/// status, or the response can't be parsed.
+#[tauri::command]
+pub async fn check_for_update() -> Result<UpdateInfo, String> {
+    // Only the fields we use. Serde ignores the rest of GitHub's large payload.
+    #[derive(serde::Deserialize)]
+    struct GithubRelease {
+        tag_name: Option<String>,
+        name: Option<String>,
+        body: Option<String>,
+        html_url: Option<String>,
+    }
+
+    // GitHub rejects requests without a User-Agent. Accept pins the v3 media type.
+    let client = reqwest::Client::builder()
+        .build()
+        .map_err(|e| format!("could not start the update check: {e}"))?;
+    let resp = client
+        .get(RELEASES_API)
+        .header("User-Agent", "GifSmith")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|_| {
+            "Couldn't reach GitHub to check for updates. Check your connection.".to_string()
+        })?;
+    if !resp.status().is_success() {
+        return Err(format!(
+            "GitHub returned {} for the update check",
+            resp.status()
+        ));
+    }
+    // No `json` feature on reqwest (default-features off): read text, parse with
+    // serde_json, which is already a dependency.
+    let body = resp
+        .text()
+        .await
+        .map_err(|_| "the update response was interrupted".to_string())?;
+    let release: GithubRelease =
+        serde_json::from_str(&body).map_err(|e| format!("could not read the update info: {e}"))?;
+
+    let current = env!("CARGO_PKG_VERSION").to_string();
+    let tag = release.tag_name.unwrap_or_default();
+    let is_newer = is_newer(&current, &tag);
+    // Show the tag without a leading `v` so it reads consistently with `current`.
+    let latest = tag.trim().trim_start_matches(['v', 'V']).to_string();
+    // Prefer the release body; fall back to the release name; else empty.
+    let notes = release
+        .body
+        .filter(|b| !b.trim().is_empty())
+        .or(release.name)
+        .unwrap_or_default();
+    let url = release
+        .html_url
+        .filter(|u| !u.trim().is_empty())
+        .unwrap_or_else(|| RELEASES_PAGE.to_string());
+
+    Ok(UpdateInfo {
+        current,
+        latest,
+        is_newer,
+        notes,
+        url,
+    })
+}
+
 /// Resolve the bundled `ffmpeg` sidecar. Tauri places it next to the app binary
 /// when bundled, and next to the dev binary in `target/` during development.
 fn ffmpeg_path() -> io::Result<PathBuf> {
@@ -766,7 +888,37 @@ fn ffmpeg_path() -> io::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_ytdlp_args, direct_media_extension, friendly_ytdlp_error, is_http_url};
+    use super::{
+        build_ytdlp_args, direct_media_extension, friendly_ytdlp_error, is_http_url, is_newer,
+        parse_version,
+    };
+
+    #[test]
+    fn parses_versions_ignoring_v_and_suffixes() {
+        assert_eq!(parse_version("v1.2.3"), vec![1, 2, 3]);
+        assert_eq!(parse_version("1.0.0"), vec![1, 0, 0]);
+        // Leading V and a pre-release suffix on the last component.
+        assert_eq!(parse_version("V2.4.0-beta"), vec![2, 4, 0]);
+    }
+
+    #[test]
+    fn detects_a_strictly_newer_version() {
+        assert!(is_newer("1.0.0", "1.0.1"));
+        assert!(is_newer("1.0.0", "v1.1.0"));
+        // Numeric compare, not lexical: 1.10 must beat 1.9.
+        assert!(is_newer("1.9.0", "1.10.0"));
+        // Differing component counts compare as if zero-padded.
+        assert!(is_newer("1.0", "1.0.1"));
+    }
+
+    #[test]
+    fn same_or_older_version_is_not_newer() {
+        assert!(!is_newer("1.0.0", "1.0.0"));
+        assert!(!is_newer("1.2.0", "1.1.9"));
+        assert!(!is_newer("2.0.0", "v1.9.9"));
+        // Trailing zeros don't make it newer.
+        assert!(!is_newer("1.0", "1.0.0"));
+    }
 
     #[test]
     fn accepts_http_and_https_urls() {

@@ -63,6 +63,11 @@ export const [previewBytes, setPreviewBytes] = createSignal(0);
 /** Whether the full-screen Exports gallery is open over the editor. */
 export const [galleryOpen, setGalleryOpen] = createSignal(false);
 
+// --- Settings ---
+
+/** Whether the settings popover (version + update check) is open. */
+export const [settingsOpen, setSettingsOpen] = createSignal(false);
+
 // --- Crop (source pixel coordinates) ---
 
 export interface CropRect {
