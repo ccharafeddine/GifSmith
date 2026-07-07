@@ -6,6 +6,15 @@
 
 <p align="center">Turn a slice of video into a high-quality animated GIF.</p>
 
+<p align="center">
+  <a href="https://github.com/ccharafeddine/GifSmith/releases"><img src="https://img.shields.io/github/v/release/ccharafeddine/GifSmith?style=for-the-badge&label=release&color=8b5cf6" alt="Latest release" /></a>
+  <a href="https://github.com/ccharafeddine/GifSmith/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ccharafeddine/GifSmith/ci.yml?style=for-the-badge&logo=github&label=ci" alt="CI status" /></a>
+  <a href="https://github.com/ccharafeddine/GifSmith/releases"><img src="https://img.shields.io/github/downloads/ccharafeddine/GifSmith/total?style=for-the-badge&label=downloads&color=06b6d4" alt="Downloads" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b5cf6?style=for-the-badge" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-555?style=for-the-badge" alt="macOS and Windows" />
+  <img src="https://img.shields.io/badge/built%20with-Tauri%20%2B%20SolidJS-8b5cf6?style=for-the-badge" alt="Built with Tauri and SolidJS" />
+</p>
+
 ---
 
 GifSmith is a small, fast desktop app for Mac and Windows. Open a local video (or
