@@ -552,3 +552,10 @@ RUNTIME-UNCONFIRMED still: crop export, boomerang export, boomerang preview
 == ENVIRONMENT ==
   - Windows 10, rustc/cargo 1.96.0, node 24.13.0, npm 11.7.0.
   - Repo: https://github.com/ccharafeddine/GifSmith
+
+== SESSION 2026-10-14 (hardening/2026-10) ==
+  - encoder.rs: ffmpeg arg/filter building split into pure helpers + 8 tests; pipe expects replaced with errors.
+  - probe.rs: 5 more edge-case tests.
+  - vitest added (npm test), 12 frontend tests for format/settings/update; CI runs npm test.
+  - URL import: ported ClipSmith 2.1.0 yt-dlp source-quality args + generic scrape fallback (scrape.rs, regex dep). reqwest left at 0.13 (ported code compiles unchanged).
+  - Gates: fmt, clippy -D warnings, cargo test 55/55, typecheck, vitest 12/12. Not runtime-verified in the GUI.
