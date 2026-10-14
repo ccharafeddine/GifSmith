@@ -256,4 +256,63 @@ mod tests {
         assert!((m.duration_secs - 5.0).abs() < 1e-6);
         assert_eq!(m.container, "webm");
     }
+
+    #[test]
+    fn rejects_malformed_json() {
+        assert!(matches!(
+            parse_ffprobe_json("not json"),
+            Err(ProbeError::Json(_))
+        ));
+    }
+
+    #[test]
+    fn errors_when_duration_missing_or_zero() {
+        for dur in ["", r#", "duration": "0.0""#, r#", "duration": "N/A""#] {
+            let json = format!(
+                r#"{{ "streams": [ {{ "codec_type": "video", "r_frame_rate": "30/1" }} ],
+                     "format": {{ "format_name": "mp4"{dur} }} }}"#
+            );
+            assert!(
+                matches!(parse_ffprobe_json(&json), Err(ProbeError::NoDuration)),
+                "duration fragment {dur:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn frame_rate_errors_and_fallbacks() {
+        assert!(parse_frame_rate(None).is_err());
+        assert!(parse_frame_rate(Some("30")).is_err());
+        assert!(parse_frame_rate(Some("abc/1")).is_err());
+        assert!(parse_frame_rate(Some("30/x")).is_err());
+        assert_eq!(
+            parse_frame_rate(Some("30000/1001")).ok(),
+            Some((30000, 1001))
+        );
+        // avg_frame_rate is used when r_frame_rate is absent.
+        let json = r#"{ "streams": [ { "codec_type": "video", "avg_frame_rate": "25/1" } ],
+                        "format": { "duration": "2.0" } }"#;
+        let m = parse_ffprobe_json(json).expect("should parse");
+        assert_eq!((m.fps_num, m.fps_den), (25, 1));
+    }
+
+    #[test]
+    fn defaults_unknown_codec_container_and_zero_dims() {
+        let json = r#"{ "streams": [ { "codec_type": "video", "r_frame_rate": "24/1" } ],
+                        "format": { "duration": "1.0" } }"#;
+        let m = parse_ffprobe_json(json).expect("should parse");
+        assert_eq!(m.codec, "unknown");
+        assert_eq!(m.container, "unknown");
+        assert_eq!((m.width, m.height), (0, 0));
+    }
+
+    #[test]
+    fn swaps_dimensions_for_270_tag_rotation() {
+        let json = r#"{ "streams": [ { "codec_type": "video", "r_frame_rate": "30/1",
+                          "width": 1280, "height": 720, "tags": { "rotate": "270" } } ],
+                        "format": { "duration": "1.0", "format_name": "mov,mp4" } }"#;
+        let m = parse_ffprobe_json(json).expect("should parse");
+        assert_eq!((m.width, m.height), (720, 1280));
+        assert_eq!(m.container, "mov");
+    }
 }

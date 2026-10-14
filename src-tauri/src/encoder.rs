@@ -87,74 +87,26 @@ pub fn export_gif(
     on_progress: &dyn Fn(f64),
     cancel: &AtomicBool,
 ) -> Result<(), EncodeError> {
-    let out_w = even(params.width);
-    // Aspect comes from the crop region when cropping, else the full source.
-    let (in_w, in_h) = match params.crop {
-        Some(c) if c.w > 0 && c.h > 0 => (c.w, c.h),
-        _ => (params.src_width, params.src_height),
-    };
-    // Derive height from input aspect so the frame byte size is known exactly
-    // (avoids ffmpeg's scale=-1 rounding, which we couldn't predict).
-    let out_h = if in_w == 0 {
-        out_w
-    } else {
-        let h = (f64::from(in_h) * f64::from(out_w) / f64::from(in_w)).round() as u32;
-        even(h)
-    };
+    let (out_w, out_h) = output_dims(params);
     let frame_bytes = out_w as usize * out_h as usize * 4;
-    // Clamp the seek to >= 0: a negative start (e.g. a trim handle dragged past
-    // zero on a sub-second clip) would pass ffmpeg a nonsensical `-ss`.
-    let start_secs = params.start_secs.max(0.0);
-    let duration = (params.end_secs - start_secs).max(0.0);
-    let speed = if params.speed > 0.0 {
-        params.speed
-    } else {
-        1.0
-    };
-    let pts_factor = 1.0 / speed;
-    // Filter order: retime (setpts) -> resample (fps) -> crop -> scale. crop
-    // must precede scale; setpts must precede fps.
-    let crop_part = match params.crop {
-        Some(c) if c.w > 0 && c.h > 0 => format!(",crop={}:{}:{}:{}", c.w, c.h, c.x, c.y),
-        _ => String::new(),
-    };
-    let vf = format!(
-        "setpts={pts_factor:.6}*PTS,fps={}{crop_part},scale={out_w}:{out_h}:flags=lanczos",
-        params.fps
-    );
+    let (_, duration) = clip_window(params);
+    let speed = effective_speed(params.speed);
+    let args = ffmpeg_args(params, out_w, out_h);
 
-    // -ss and -t are both INPUT options (before -i): -ss is a fast keyframe seek,
-    // -t bounds the SOURCE read to the selection length. Bounding the source (not
-    // the output) is essential with speed != 1, where setpts retimes the frames:
-    // an output-side -t would truncate a slowed clip to a fraction of the
-    // selection. setpts/fps/crop/scale in -vf then retime and resample.
     let mut child = Command::new(ffmpeg)
-        .args([
-            "-v",
-            "error",
-            "-nostdin",
-            "-ss",
-            &format!("{start_secs:.6}"),
-            "-t",
-            &format!("{duration:.6}"),
-            "-i",
-            &params.input_path,
-            "-vf",
-            &vf,
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "rgba",
-            "pipe:1",
-        ])
+        .args(&args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(EncodeError::Spawn)?;
 
-    let mut stdout = child.stdout.take().expect("stdout was piped");
-    let mut stderr = child.stderr.take().expect("stderr was piped");
+    let (Some(mut stdout), Some(mut stderr)) = (child.stdout.take(), child.stderr.take()) else {
+        let _ = child.kill();
+        return Err(EncodeError::Ffmpeg(
+            "ffmpeg output pipes were not available".to_string(),
+        ));
+    };
 
     // Drain stderr on its own thread so a full pipe can't deadlock the reader.
     let stderr_thread = thread::spawn(move || {
@@ -215,12 +167,7 @@ pub fn export_gif(
             }
         }
 
-        let n = frames.len();
-        // Output order: 0,1,..,n-1, then n-2,n-3,..,1.
-        let mut order: Vec<usize> = (0..n).collect();
-        if n >= 2 {
-            order.extend((1..=n - 2).rev());
-        }
+        let order = boomerang_order(frames.len());
         let total_out = order.len().max(1);
         for &i in &order {
             if cancel.load(Ordering::Relaxed) {
@@ -285,6 +232,96 @@ pub fn export_gif(
     Ok(())
 }
 
+/// Output frame size: `params.width` rounded to even, height derived from the
+/// crop (or source) aspect so the raw frame byte size is known exactly (avoids
+/// ffmpeg's `scale=-1` rounding, which we couldn't predict).
+pub(crate) fn output_dims(params: &ExportParams) -> (u32, u32) {
+    let out_w = even(params.width);
+    let (in_w, in_h) = match params.crop {
+        Some(c) if c.w > 0 && c.h > 0 => (c.w, c.h),
+        _ => (params.src_width, params.src_height),
+    };
+    let out_h = if in_w == 0 {
+        out_w
+    } else {
+        let h = (f64::from(in_h) * f64::from(out_w) / f64::from(in_w)).round() as u32;
+        even(h)
+    };
+    (out_w, out_h)
+}
+
+/// Seek start and source duration. The start is clamped to >= 0 (a trim handle
+/// dragged past zero would pass ffmpeg a nonsensical `-ss`) and the duration to
+/// >= 0 (an inverted selection yields no frames instead of an ffmpeg error).
+pub(crate) fn clip_window(params: &ExportParams) -> (f64, f64) {
+    let start = params.start_secs.max(0.0);
+    let duration = (params.end_secs - start).max(0.0);
+    (start, duration)
+}
+
+/// Speed multiplier, falling back to 1x for zero, negative, or NaN input.
+pub(crate) fn effective_speed(speed: f64) -> f64 {
+    if speed > 0.0 && speed.is_finite() {
+        speed
+    } else {
+        1.0
+    }
+}
+
+/// The `-vf` chain. Order: retime (setpts) -> resample (fps) -> crop -> scale.
+/// crop must precede scale; setpts must precede fps.
+pub(crate) fn video_filter(params: &ExportParams, out_w: u32, out_h: u32) -> String {
+    let pts_factor = 1.0 / effective_speed(params.speed);
+    let crop_part = match params.crop {
+        Some(c) if c.w > 0 && c.h > 0 => format!(",crop={}:{}:{}:{}", c.w, c.h, c.x, c.y),
+        _ => String::new(),
+    };
+    format!(
+        "setpts={pts_factor:.6}*PTS,fps={}{crop_part},scale={out_w}:{out_h}:flags=lanczos",
+        params.fps
+    )
+}
+
+/// Full ffmpeg argument list. -ss and -t are both INPUT options (before -i):
+/// -ss is a fast keyframe seek, -t bounds the SOURCE read to the selection
+/// length. Bounding the source (not the output) is essential with speed != 1,
+/// where setpts retimes the frames: an output-side -t would truncate a slowed
+/// clip to a fraction of the selection.
+pub(crate) fn ffmpeg_args(params: &ExportParams, out_w: u32, out_h: u32) -> Vec<String> {
+    let (start_secs, duration) = clip_window(params);
+    [
+        "-v",
+        "error",
+        "-nostdin",
+        "-ss",
+        &format!("{start_secs:.6}"),
+        "-t",
+        &format!("{duration:.6}"),
+        "-i",
+        &params.input_path,
+        "-vf",
+        &video_filter(params, out_w, out_h),
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgba",
+        "pipe:1",
+    ]
+    .iter()
+    .map(|s| (*s).to_string())
+    .collect()
+}
+
+/// Boomerang frame order: 0,1,..,n-1, then n-2,..,1. The two seam frames are
+/// dropped so the turn-arounds don't show a duplicated frame.
+pub(crate) fn boomerang_order(n: usize) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..n).collect();
+    if n >= 3 {
+        order.extend((1..=n - 2).rev());
+    }
+    order
+}
+
 /// Read until `buf` is full or EOF. Returns the number of bytes read (== buf.len
 /// on a full read, less at EOF).
 fn read_full(r: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
@@ -302,7 +339,23 @@ fn read_full(r: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::even;
+    use super::*;
+
+    fn params() -> ExportParams {
+        ExportParams {
+            input_path: "C:\\clips\\in put.mp4".to_string(),
+            start_secs: 1.5,
+            end_secs: 4.0,
+            fps: 15,
+            width: 480,
+            quality: 90,
+            src_width: 1920,
+            src_height: 1080,
+            crop: None,
+            speed: 1.0,
+            boomerang: false,
+        }
+    }
 
     #[test]
     fn even_rounds_down_and_floors_at_two() {
@@ -311,5 +364,97 @@ mod tests {
         assert_eq!(even(1), 2);
         assert_eq!(even(0), 2);
         assert_eq!(even(2), 2);
+    }
+
+    #[test]
+    fn dims_follow_source_aspect() {
+        assert_eq!(output_dims(&params()), (480, 270));
+    }
+
+    #[test]
+    fn dims_follow_crop_aspect_and_round_even() {
+        let mut p = params();
+        p.width = 481;
+        p.crop = Some(Crop {
+            x: 10,
+            y: 20,
+            w: 300,
+            h: 301,
+        });
+        // 301 * 480 / 300 = 481.6 -> 482 (even)
+        assert_eq!(output_dims(&p), (480, 482));
+    }
+
+    #[test]
+    fn dims_ignore_degenerate_crop_and_zero_source() {
+        let mut p = params();
+        p.crop = Some(Crop {
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 100,
+        });
+        assert_eq!(output_dims(&p), (480, 270));
+        p.crop = None;
+        p.src_width = 0;
+        assert_eq!(output_dims(&p), (480, 480));
+    }
+
+    #[test]
+    fn window_clamps_negative_start_and_inverted_range() {
+        let mut p = params();
+        p.start_secs = -0.4;
+        assert_eq!(clip_window(&p), (0.0, 4.0));
+        p.start_secs = 5.0;
+        assert_eq!(clip_window(&p), (5.0, 0.0));
+    }
+
+    #[test]
+    fn speed_falls_back_to_one() {
+        assert!((effective_speed(2.0) - 2.0).abs() < f64::EPSILON);
+        for bad in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!((effective_speed(bad) - 1.0).abs() < f64::EPSILON);
+        }
+    }
+
+    #[test]
+    fn filter_orders_setpts_fps_crop_scale() {
+        let mut p = params();
+        p.speed = 2.0;
+        p.crop = Some(Crop {
+            x: 1,
+            y: 2,
+            w: 640,
+            h: 360,
+        });
+        assert_eq!(
+            video_filter(&p, 480, 270),
+            "setpts=0.500000*PTS,fps=15,crop=640:360:1:2,scale=480:270:flags=lanczos"
+        );
+    }
+
+    #[test]
+    fn args_put_seek_and_duration_before_input() {
+        let p = params();
+        let args = ffmpeg_args(&p, 480, 270);
+        let pos = |a: &str| args.iter().position(|x| x == a).unwrap();
+        assert!(pos("-ss") < pos("-i"));
+        assert!(pos("-t") < pos("-i"));
+        assert_eq!(args[pos("-ss") + 1], "1.500000");
+        assert_eq!(args[pos("-t") + 1], "2.500000");
+        // The path is passed as one argument, spaces and all.
+        assert_eq!(args[pos("-i") + 1], p.input_path);
+        assert_eq!(args.last().map(String::as_str), Some("pipe:1"));
+        assert!(args
+            .windows(2)
+            .any(|w| w[0] == "-pix_fmt" && w[1] == "rgba"));
+    }
+
+    #[test]
+    fn boomerang_order_drops_seam_frames() {
+        assert_eq!(boomerang_order(0), Vec::<usize>::new());
+        assert_eq!(boomerang_order(1), vec![0]);
+        assert_eq!(boomerang_order(2), vec![0, 1]);
+        assert_eq!(boomerang_order(4), vec![0, 1, 2, 3, 2, 1]);
     }
 }
