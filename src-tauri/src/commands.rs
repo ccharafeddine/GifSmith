@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::encoder::{export_gif as run_export, ExportParams};
 use crate::probe::{parse_ffprobe_json, VideoMeta};
+use crate::scrape::{self, MediaKind};
 use base64::Engine;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -533,93 +534,11 @@ fn direct_media_extension(url: &str) -> Option<String> {
     VIDEO_EXTENSIONS.contains(&ext.as_str()).then_some(ext)
 }
 
-/// Stream a direct media link to `download_dir()/source.<ext>` over plain HTTP.
-/// Reuses the download dir so app-close cleanup already covers it. Emits
-/// "download-progress" from Content-Length when present; with no Content-Length
-/// it stays silent rather than emitting a fake value.
-async fn download_direct(
-    app: &AppHandle,
-    url: &str,
-    ext: &str,
-    cancel: &AtomicBool,
-) -> Result<String, String> {
-    use std::io::Write;
-
-    let dir = download_dir();
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
-    let out = dir.join(format!("source.{ext}"));
-
-    let mut resp = reqwest::get(url)
-        .await
-        .map_err(|_| "Couldn't reach that link. Check the URL and your connection.".to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!(
-            "the server returned {} for that link",
-            resp.status()
-        ));
-    }
-
-    let total = resp.content_length();
-    let mut downloaded: u64 = 0;
-    let mut file =
-        std::fs::File::create(&out).map_err(|e| format!("could not save the download: {e}"))?;
-    // Race each chunk read against the cancel flag so even a stalled connection
-    // (bytes never arrive) aborts promptly instead of hanging.
-    loop {
-        let chunk = tokio::select! {
-            biased;
-            () = cancelled(cancel) => {
-                drop(file);
-                let _ = std::fs::remove_dir_all(&dir);
-                return Err(DOWNLOAD_CANCELLED.to_string());
-            }
-            chunk = resp.chunk() => chunk
-                .map_err(|_| "the download was interrupted before it finished".to_string())?,
-        };
-        let Some(chunk) = chunk else { break };
-        file.write_all(&chunk)
-            .map_err(|e| format!("could not write the download: {e}"))?;
-        downloaded += chunk.len() as u64;
-        if let Some(total) = total.filter(|t| *t > 0) {
-            let p = (downloaded as f64 / total as f64).clamp(0.0, 1.0);
-            let _ = app.emit("download-progress", p);
-        }
-    }
-
-    Ok(out.to_string_lossy().into_owned())
-}
-
 /// True if `url` parses as an http or https URL. Any other scheme (`file`,
 /// `ftp`, `javascript`, ...) is rejected before it can reach reqwest or yt-dlp,
 /// so a paste can only ever trigger a network fetch of a web resource.
 fn is_http_url(url: &str) -> bool {
     reqwest::Url::parse(url).is_ok_and(|u| matches!(u.scheme(), "http" | "https"))
-}
-
-/// Assemble the yt-dlp argument vector. The URL is placed last, immediately
-/// preceded by a `--` end-of-options separator: yt-dlp parses its own argv, and
-/// without the separator a pasted string beginning with `-` (e.g. `--exec`,
-/// which runs an arbitrary command) would be taken as a flag rather than a URL.
-fn build_ytdlp_args(output_template: &str, ffmpeg_dir: Option<&Path>, url: &str) -> Vec<String> {
-    let mut args: Vec<String> = vec![
-        "--no-playlist".into(),
-        "--no-part".into(),
-        "--newline".into(),
-        "-f".into(),
-        // Prefer an H.264 mp4 the webview can play; fall back to anything.
-        "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]/bestvideo[height<=1080][ext=mp4]/best[ext=mp4]/best".into(),
-        "-o".into(),
-        output_template.into(),
-    ];
-    // Let yt-dlp use our ffmpeg for any remux/merge it needs.
-    if let Some(dir) = ffmpeg_dir {
-        args.push("--ffmpeg-location".into());
-        args.push(dir.to_string_lossy().into_owned());
-    }
-    args.push("--".into());
-    args.push(url.into());
-    args
 }
 
 /// Map a yt-dlp stderr dump to a clear, user-facing message. Raw stderr is kept
@@ -651,53 +570,409 @@ fn friendly_ytdlp_error(stderr: &str) -> String {
     }
 }
 
-/// Download a video from a URL and return its local path. Direct links to a
-/// video file are fetched over plain HTTP; everything else goes through the
-/// bundled `yt-dlp` sidecar. Emits "download-progress" events (0.0-1.0).
-///
-/// # Errors
-/// Returns a user-facing message if the download can't start, fails, or
-/// produces no file.
-#[tauri::command]
-pub async fn download_video(
-    app: AppHandle,
-    cancel: State<'_, DownloadCancel>,
-    url: String,
+/// Hard cap on any single URL download (runaway disk guard), in bytes and in
+/// yt-dlp's `--max-filesize` syntax.
+const MAX_DOWNLOAD_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+const MAX_DOWNLOAD_YTDLP: &str = "16G";
+
+/// Parse the seconds value out of an ffmpeg progress line's `time=HH:MM:SS.xx`
+/// field. Returns `None` for lines without a parseable timestamp (e.g. `N/A`).
+fn parse_progress_time(s: &str) -> Option<f64> {
+    let idx = s.rfind("time=")?;
+    let token: String = s[idx + 5..]
+        .chars()
+        .take_while(|c| !c.is_whitespace())
+        .collect();
+    let mut parts = token.split(':');
+    let h: f64 = parts.next()?.parse().ok()?;
+    let m: f64 = parts.next()?.parse().ok()?;
+    let sec: f64 = parts.next()?.parse().ok()?;
+    Some((h * 3600.0 + m * 60.0 + sec).max(0.0))
+}
+
+/// User-facing message for a page neither yt-dlp nor the fallback scraper could
+/// find a video on.
+const UNSUPPORTED_SITE: &str = "This site isn't supported. Try downloading the video yourself and opening the file, or paste a direct link to a video file.";
+
+/// True when yt-dlp failed because it has no extractor for the page (or its
+/// generic extractor found nothing): the cue to try the HTML scraper fallback.
+/// Network/HTTP failures are deliberately excluded - scraping won't fix those.
+fn ytdlp_unsupported(stderr: &str) -> bool {
+    let lower = stderr.to_lowercase();
+    lower.contains("unsupported url") || lower.contains("no video formats found")
+}
+
+/// Browser-like UA for the scrape fallback: many sites serve a stripped page
+/// (or a 403) to non-browser clients.
+const SCRAPE_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+
+/// Cap on how much page HTML the scrape fallback reads.
+const MAX_SCRAPE_HTML_BYTES: usize = 5 * 1024 * 1024;
+
+/// Cap on an HLS master playlist read (they're a few KB in practice).
+const MAX_PLAYLIST_BYTES: usize = 2 * 1024 * 1024;
+
+/// Most media candidates the scrape fallback will try per page.
+const MAX_SCRAPE_ATTEMPTS: usize = 3;
+
+/// Most embedded players (iframes / embed URLs) the fallback will follow. Each
+/// gets one yt-dlp attempt and one scrape of the embed page (depth 2 max; the
+/// embed page's own iframes are not followed), which bounds total time.
+const MAX_EMBEDS: usize = 3;
+
+/// Protocols ffmpeg may open for a scraped stream: network only, so a crafted
+/// playlist can't make it read local files (`file:`) or spawn anything.
+const STREAM_PROTOCOLS: &str = "http,https,tcp,tls,crypto";
+
+/// yt-dlp format selection, source quality with no resolution cap or codec
+/// preference: the best video-only stream + best audio (merged), else the best
+/// single file that already has audio, else any video + audio. Video-only first
+/// avoids merging a muxed file with a second copy of its own audio (`bv*+ba`
+/// produced two audio tracks on single-file sites).
+const YTDLP_FORMAT: &str = "bv*[acodec=none]+ba/b/bv*+ba";
+
+/// yt-dlp format sort: highest resolution, then frame rate, then bitrate.
+const YTDLP_SORT: &str = "res,fps,br";
+
+/// Merge container: mp4 when the codecs fit (H.264/AAC, and modern VP9/AV1/Opus
+/// too), mkv otherwise - so no format is ever downgraded to fit a container.
+const YTDLP_MERGE: &str = "mp4/mkv";
+
+/// Build the yt-dlp argument list. `referer` is sent for embed URLs (many
+/// players are domain-locked to the page that embeds them).
+fn ytdlp_args(
+    template: &str,
+    ffmpeg_location: Option<&str>,
+    referer: Option<&str>,
+    url: &str,
+) -> Vec<String> {
+    let mut args: Vec<String> = vec![
+        // Ignore any user/global yt-dlp config so a planted config file can't
+        // inject options (e.g. --exec); cap the size as a runaway disk guard.
+        "--ignore-config".into(),
+        "--max-filesize".into(),
+        MAX_DOWNLOAD_YTDLP.into(),
+        "--no-playlist".into(),
+        "--no-part".into(),
+        "--newline".into(),
+        "--socket-timeout".into(),
+        "20".into(),
+        "-f".into(),
+        YTDLP_FORMAT.into(),
+        "-S".into(),
+        YTDLP_SORT.into(),
+        "--merge-output-format".into(),
+        YTDLP_MERGE.into(),
+        "-o".into(),
+        template.into(),
+    ];
+    if let Some(loc) = ffmpeg_location {
+        // Let yt-dlp use our ffmpeg for any remux/merge it needs.
+        args.push("--ffmpeg-location".into());
+        args.push(loc.into());
+    }
+    if let Some(r) = referer.filter(|r| is_http_url(r)) {
+        args.push("--referer".into());
+        args.push(r.into());
+    }
+    // End-of-options: everything after `--` is a positional URL, never a flag.
+    args.push("--".into());
+    args.push(url.into());
+    args
+}
+
+/// `scheme://host[:port]` of a URL, for an `Origin` header.
+fn origin_of(url: &str) -> Option<String> {
+    let u = reqwest::Url::parse(url).ok()?;
+    let origin = u.origin().ascii_serialization();
+    (origin != "null").then_some(origin)
+}
+
+/// HTTP client for scraped fetches: browser UA, plus Referer/Origin of the page
+/// the media was found on (hosts commonly reject hotlinks without them).
+fn scrape_client(referer: Option<&str>, timeout: Option<u64>) -> Result<reqwest::Client, String> {
+    let mut headers = reqwest::header::HeaderMap::new();
+    if let Some(r) = referer {
+        if let Ok(v) = reqwest::header::HeaderValue::from_str(r) {
+            headers.insert(reqwest::header::REFERER, v);
+        }
+        if let Some(o) = origin_of(r).and_then(|o| reqwest::header::HeaderValue::from_str(&o).ok())
+        {
+            headers.insert(reqwest::header::ORIGIN, o);
+        }
+    }
+    let mut b = reqwest::Client::builder()
+        .user_agent(SCRAPE_USER_AGENT)
+        .default_headers(headers)
+        .connect_timeout(std::time::Duration::from_secs(20));
+    if let Some(t) = timeout {
+        b = b.timeout(std::time::Duration::from_secs(t));
+    }
+    b.build()
+        .map_err(|e| format!("could not start the page fetch: {e}"))
+}
+
+/// Parse ffmpeg's input `Duration: HH:MM:SS.xx,` header into seconds. Live
+/// streams report `N/A`, which yields `None` (no progress is emitted then).
+fn parse_ffmpeg_duration(s: &str) -> Option<f64> {
+    let idx = s.find("Duration:")?;
+    let rest = s[idx + "Duration:".len()..].trim_start();
+    let field = rest.split([',', ' ', '\n', '\r']).next()?;
+    let mut parts = field.split(':');
+    let h: f64 = parts.next()?.parse().ok()?;
+    let m: f64 = parts.next()?.parse().ok()?;
+    let sec: f64 = parts.next()?.parse().ok()?;
+    let total = h * 3600.0 + m * 60.0 + sec;
+    (total > 0.0).then_some(total)
+}
+
+/// Fetch a page/playlist as text: browser UA (+ Referer/Origin), 20s timeout,
+/// and a size cap (excess is truncated, not an error - a partial page still
+/// parses). Races the read against the cancel flag.
+async fn fetch_text(
+    url: &str,
+    referer: Option<&str>,
+    cap: usize,
+    cancel: &AtomicBool,
 ) -> Result<String, String> {
-    let flag = cancel.0.clone();
-    flag.store(false, Ordering::SeqCst);
-
-    // Reject anything that isn't a web link before it can reach reqwest or the
-    // yt-dlp sidecar. Guards against file:// path reads and odd schemes.
-    if !is_http_url(&url) {
-        return Err("Enter an http or https video link.".to_string());
+    let client = scrape_client(referer, Some(20))?;
+    let mut resp = tokio::select! {
+        biased;
+        () = cancelled(cancel) => return Err(DOWNLOAD_CANCELLED.to_string()),
+        r = client.get(url).header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8").send() => r
+            .map_err(|_| "Couldn't reach that link. Check the URL and your connection.".to_string())?,
+    };
+    if !resp.status().is_success() {
+        return Err(UNSUPPORTED_SITE.to_string());
     }
-
-    // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
-    // works even for hosts yt-dlp has no extractor for.
-    if let Some(ext) = direct_media_extension(&url) {
-        return download_direct(&app, &url, &ext, &flag).await;
+    let mut body: Vec<u8> = Vec::new();
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            () = cancelled(cancel) => return Err(DOWNLOAD_CANCELLED.to_string()),
+            c = resp.chunk() => c.map_err(|_| UNSUPPORTED_SITE.to_string())?,
+        };
+        let Some(chunk) = chunk else { break };
+        body.extend_from_slice(&chunk);
+        if body.len() >= cap {
+            body.truncate(cap);
+            break;
+        }
     }
+    Ok(String::from_utf8_lossy(&body).into_owned())
+}
 
+/// What ffmpeg should read for a stream candidate.
+#[derive(Debug, PartialEq)]
+struct StreamInputs {
+    /// One input (a manifest or a chosen variant) or two (variant + audio).
+    inputs: Vec<String>,
+    /// True when `inputs[0]` is an already-chosen single variant.
+    pinned: bool,
+}
+
+/// For an HLS master playlist, pick the best variant (highest resolution, then
+/// bandwidth) and its matching audio rendition. DASH / unknown streams are
+/// passed through whole: with no `-map`, ffmpeg's default stream selection
+/// already takes the highest-resolution video and the best audio. Any playlist
+/// fetch/parse failure falls back to handing ffmpeg the URL as-is.
+async fn resolve_stream_inputs(
+    url: &str,
+    kind: &MediaKind,
+    referer: Option<&str>,
+    cancel: &AtomicBool,
+) -> Result<StreamInputs, String> {
+    if *kind == MediaKind::Hls {
+        match fetch_text(url, referer, MAX_PLAYLIST_BYTES, cancel).await {
+            Ok(text) => {
+                if let Some(c) = scrape::best_hls_variant(&text, url) {
+                    let mut inputs = vec![c.video];
+                    inputs.extend(c.audio);
+                    return Ok(StreamInputs {
+                        inputs,
+                        pinned: true,
+                    });
+                }
+            }
+            Err(e) if e == DOWNLOAD_CANCELLED => return Err(e),
+            Err(_) => {}
+        }
+    }
+    Ok(StreamInputs {
+        inputs: vec![url.to_string()],
+        pinned: false,
+    })
+}
+
+/// Build the ffmpeg remux command for a stream: per-input network-only protocol
+/// whitelist + browser UA + Referer/Origin, stream copy (no re-encode, so the
+/// source quality is untouched), size cap, and `+faststart`. `max_secs` limits
+/// the output duration (used only by the live test harness).
+fn stream_args(
+    s: &StreamInputs,
+    referer: Option<&str>,
+    out: &str,
+    max_secs: Option<f64>,
+) -> Vec<String> {
+    let mut args: Vec<String> = vec!["-hide_banner".into(), "-nostdin".into(), "-y".into()];
+    for input in &s.inputs {
+        args.extend([
+            "-protocol_whitelist".to_string(),
+            STREAM_PROTOCOLS.to_string(),
+            "-user_agent".to_string(),
+            SCRAPE_USER_AGENT.to_string(),
+        ]);
+        if let Some(r) = referer.filter(|r| is_http_url(r)) {
+            args.extend(["-referer".to_string(), r.to_string()]);
+            if let Some(o) = origin_of(r) {
+                args.extend(["-headers".to_string(), format!("Origin: {o}\r\n")]);
+            }
+        }
+        args.extend(["-i".to_string(), input.clone()]);
+    }
+    if s.inputs.len() > 1 {
+        args.extend(["-map", "0:v:0", "-map", "1:a:0"].map(String::from));
+    } else if s.pinned {
+        args.extend(["-map", "0:v:0", "-map", "0:a:0?"].map(String::from));
+    }
+    args.extend(["-c".to_string(), "copy".to_string()]);
+    if let Some(t) = max_secs {
+        args.extend(["-t".to_string(), format!("{t}")]);
+    }
+    args.extend([
+        "-fs".to_string(),
+        MAX_DOWNLOAD_BYTES.to_string(),
+        "-movflags".to_string(),
+        "+faststart".to_string(),
+        out.to_string(),
+    ]);
+    args
+}
+
+/// Wipe and recreate the download folder.
+fn fresh_download_dir() -> Result<PathBuf, String> {
     let dir = download_dir();
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("could not prepare download folder: {e}"))?;
-    let template = dir.join("source.%(ext)s");
-    let ffmpeg_dir = ffmpeg_path()
-        .ok()
-        .and_then(|p| p.parent().map(PathBuf::from));
-    let args = build_ytdlp_args(&template.to_string_lossy(), ffmpeg_dir.as_deref(), &url);
+    Ok(dir)
+}
 
+/// Remux a stream candidate to `download_dir()/source.mp4` with the bundled
+/// ffmpeg (see `resolve_stream_inputs` / `stream_args`). Honours the cancel
+/// flag, emits "download-progress" when the input reports a finite duration,
+/// and removes the partial file on any failure.
+async fn download_stream(
+    app: &AppHandle,
+    stream_url: &str,
+    kind: &MediaKind,
+    referer: Option<&str>,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
+    // Defence in depth: the scraper already keeps http/https only, and an
+    // http(s) URL can never start with `-`, so it can't be read as an option.
+    if !is_http_url(stream_url) {
+        return Err(UNSUPPORTED_SITE.to_string());
+    }
+    let inputs = resolve_stream_inputs(stream_url, kind, referer, cancel).await?;
+    if inputs.inputs.iter().any(|i| !is_http_url(i)) {
+        return Err(UNSUPPORTED_SITE.to_string());
+    }
+    let out = fresh_download_dir()?.join("source.mp4");
+    let out_s = out.to_string_lossy().into_owned();
+    let args = stream_args(&inputs, referer, &out_s, None);
+
+    let (mut rx, child) = app
+        .shell()
+        .sidecar("ffmpeg")
+        .map_err(|e| format!("could not locate ffmpeg: {e}"))?
+        .args(args)
+        .spawn()
+        .map_err(|e| format!("ffmpeg failed to start: {e}"))?;
+
+    let mut duration: Option<f64> = None;
+    let mut tail = String::new();
+    let fail = |msg: String| {
+        let _ = std::fs::remove_dir_all(download_dir());
+        Err(msg)
+    };
+    loop {
+        let event = tokio::select! {
+            biased;
+            () = cancelled(cancel) => {
+                let _ = child.kill();
+                return fail(DOWNLOAD_CANCELLED.to_string());
+            }
+            event = rx.recv() => match event {
+                Some(event) => event,
+                None => break,
+            },
+        };
+        match event {
+            CommandEvent::Stderr(bytes) => {
+                let text = String::from_utf8_lossy(&bytes);
+                if duration.is_none() {
+                    duration = parse_ffmpeg_duration(&text);
+                }
+                if let (Some(total), Some(t)) = (duration, parse_progress_time(&text)) {
+                    let _ = app.emit("download-progress", (t / total).clamp(0.0, 1.0));
+                }
+                tail.push_str(&text);
+                if tail.len() > 4096 {
+                    let cut = tail.len() - 4096;
+                    let cut = (cut..tail.len())
+                        .find(|i| tail.is_char_boundary(*i))
+                        .unwrap_or(0);
+                    tail.drain(..cut);
+                }
+            }
+            CommandEvent::Error(e) => tail.push_str(&e),
+            CommandEvent::Terminated(payload) if payload.code != Some(0) => {
+                let summary = tail
+                    .lines()
+                    .map(str::trim)
+                    .rfind(|l| !l.is_empty())
+                    .unwrap_or("");
+                return fail(if summary.is_empty() {
+                    "Download failed.".to_string()
+                } else {
+                    format!("Download failed: {summary}")
+                });
+            }
+            _ => {}
+        }
+    }
+
+    match std::fs::metadata(&out) {
+        Ok(m) if m.len() > 0 => Ok(out_s),
+        _ => fail("the download produced no file".to_string()),
+    }
+}
+
+/// Why a yt-dlp run didn't produce a file.
+enum YtdlpError {
+    Cancelled,
+    /// yt-dlp failed; carries its stderr.
+    Failed(String),
+}
+
+/// Run the bundled yt-dlp with `args` (which write into `dir`), forwarding
+/// progress, racing the cancel flag, and returning the downloaded file path.
+async fn run_ytdlp(
+    app: &AppHandle,
+    args: Vec<String>,
+    dir: &Path,
+    cancel: &AtomicBool,
+) -> Result<String, YtdlpError> {
     // MAINTAINER NOTE: the bundled yt-dlp goes stale as sites change their
     // players; refresh it (scripts/fetch-ytdlp.sh) on every release build or URL
-    // extraction will start failing in the wild. Also tracked in progress.txt.
+    // extraction will start failing in the wild.
     let (mut rx, child) = app
         .shell()
         .sidecar("yt-dlp")
-        .map_err(|e| format!("could not locate yt-dlp: {e}"))?
+        .map_err(|e| YtdlpError::Failed(format!("could not locate yt-dlp: {e}")))?
         .args(args)
         .spawn()
-        .map_err(|e| format!("yt-dlp failed to start: {e}"))?;
+        .map_err(|e| YtdlpError::Failed(format!("yt-dlp failed to start: {e}")))?;
 
     let mut errors = String::new();
     loop {
@@ -706,10 +981,10 @@ pub async fn download_video(
         // cancel a hang; select! lets the cancel branch fire regardless.
         let event = tokio::select! {
             biased;
-            () = cancelled(&flag) => {
+            () = cancelled(cancel) => {
                 let _ = child.kill();
-                let _ = std::fs::remove_dir_all(&dir);
-                return Err(DOWNLOAD_CANCELLED.to_string());
+                let _ = std::fs::remove_dir_all(dir);
+                return Err(YtdlpError::Cancelled);
             }
             event = rx.recv() => match event {
                 Some(event) => event,
@@ -732,20 +1007,226 @@ pub async fn download_video(
             }
             CommandEvent::Error(e) => errors.push_str(&e),
             CommandEvent::Terminated(payload) if payload.code != Some(0) => {
-                return Err(friendly_ytdlp_error(&errors));
+                return Err(YtdlpError::Failed(errors));
             }
             _ => {}
         }
     }
 
-    let file = std::fs::read_dir(&dir)
-        .map_err(|e| format!("could not read download folder: {e}"))?
+    std::fs::read_dir(dir)
+        .map_err(|e| YtdlpError::Failed(format!("could not read download folder: {e}")))?
         .filter_map(Result::ok)
         .map(|e| e.path())
-        .find(|p| p.is_file());
-    match file {
-        Some(p) => Ok(p.to_string_lossy().into_owned()),
-        None => Err("the download produced no file".to_string()),
+        .find(|p| p.is_file())
+        .map(|p| p.to_string_lossy().into_owned())
+        .ok_or_else(|| YtdlpError::Failed("the download produced no file".to_string()))
+}
+
+/// The `--ffmpeg-location` to hand yt-dlp (the folder holding our sidecar).
+fn ytdlp_ffmpeg_location() -> Option<String> {
+    ffmpeg_path()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_string_lossy().into_owned()))
+}
+
+/// Try a page's media candidates (best first, up to `MAX_SCRAPE_ATTEMPTS`):
+/// direct files over HTTP, streams through ffmpeg, all with `referer` as the
+/// Referer/Origin. `Ok(None)` = nothing worked (reason left in `last_err`);
+/// `Err` only for a cancel.
+async fn try_media(
+    app: &AppHandle,
+    candidates: &[scrape::Candidate],
+    referer: &str,
+    cancel: &AtomicBool,
+    last_err: &mut String,
+) -> Result<Option<String>, String> {
+    let media = candidates.iter().filter(|c| c.kind != MediaKind::Embed);
+    for c in media.take(MAX_SCRAPE_ATTEMPTS) {
+        let result = match &c.kind {
+            MediaKind::File(ext) => download_direct(app, &c.url, ext, Some(referer), cancel).await,
+            kind => download_stream(app, &c.url, kind, Some(referer), cancel).await,
+        };
+        match result {
+            Ok(path) => return Ok(Some(path)),
+            Err(e) if e == DOWNLOAD_CANCELLED => return Err(e),
+            Err(e) => *last_err = e,
+        }
+    }
+    Ok(None)
+}
+
+/// Fallback for pages yt-dlp has no extractor for. Order (each step bounded):
+/// 1. fetch the page HTML and try its embedded media (video tags, data-attrs,
+///    JSON-LD, script/packed-JS URLs), best quality first;
+/// 2. for each embedded player (iframe / embed URL, up to `MAX_EMBEDS`): run
+///    yt-dlp on the embed URL with the page as Referer (Vimeo, YouTube,
+///    Dailymotion, JW Player, Brightcove, Wistia, Streamable, ... embeds), and
+///    if that fails, scrape the embed page's own media once.
+///
+/// With nothing found it returns the original "site isn't supported" message.
+async fn scrape_fallback(
+    app: &AppHandle,
+    page_url: &str,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
+    let html = fetch_text(page_url, None, MAX_SCRAPE_HTML_BYTES, cancel).await?;
+    let candidates = scrape::extract_candidates(&html, page_url);
+    let mut last_err = UNSUPPORTED_SITE.to_string();
+    if let Some(p) = try_media(app, &candidates, page_url, cancel, &mut last_err).await? {
+        return Ok(p);
+    }
+    let embeds = candidates.iter().filter(|c| c.kind == MediaKind::Embed);
+    for embed in embeds.take(MAX_EMBEDS) {
+        let dir = fresh_download_dir()?;
+        let template = dir.join("source.%(ext)s").to_string_lossy().into_owned();
+        let args = ytdlp_args(
+            &template,
+            ytdlp_ffmpeg_location().as_deref(),
+            Some(page_url),
+            &embed.url,
+        );
+        match run_ytdlp(app, args, &dir, cancel).await {
+            Ok(p) => return Ok(p),
+            Err(YtdlpError::Cancelled) => return Err(DOWNLOAD_CANCELLED.to_string()),
+            Err(YtdlpError::Failed(_)) => {}
+        }
+        match fetch_text(&embed.url, Some(page_url), MAX_SCRAPE_HTML_BYTES, cancel).await {
+            Ok(h) => {
+                let inner = scrape::extract_candidates(&h, &embed.url);
+                if let Some(p) = try_media(app, &inner, &embed.url, cancel, &mut last_err).await? {
+                    return Ok(p);
+                }
+            }
+            Err(e) if e == DOWNLOAD_CANCELLED => return Err(e),
+            Err(_) => {}
+        }
+    }
+    Err(last_err)
+}
+
+/// Stream `url` into `out` over HTTP (browser UA + Referer/Origin when given),
+/// capped at `MAX_DOWNLOAD_BYTES`, racing every chunk against the cancel flag.
+/// Calls `on_progress` (0.0-1.0) when Content-Length is known; with no
+/// Content-Length it stays silent rather than reporting a fake value.
+async fn fetch_to_file(
+    url: &str,
+    referer: Option<&str>,
+    out: &Path,
+    cancel: &AtomicBool,
+    on_progress: impl Fn(f64),
+) -> Result<(), String> {
+    use std::io::Write;
+
+    let client = scrape_client(referer, None)?;
+    let mut resp = tokio::select! {
+        biased;
+        () = cancelled(cancel) => return Err(DOWNLOAD_CANCELLED.to_string()),
+        r = client.get(url).send() => r
+            .map_err(|_| "Couldn't reach that link. Check the URL and your connection.".to_string())?,
+    };
+    if !resp.status().is_success() {
+        return Err(format!(
+            "the server returned {} for that link",
+            resp.status()
+        ));
+    }
+
+    let total = resp.content_length();
+    let mut downloaded: u64 = 0;
+    let mut file =
+        std::fs::File::create(out).map_err(|e| format!("could not save the download: {e}"))?;
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            () = cancelled(cancel) => return Err(DOWNLOAD_CANCELLED.to_string()),
+            chunk = resp.chunk() => chunk
+                .map_err(|_| "the download was interrupted before it finished".to_string())?,
+        };
+        let Some(chunk) = chunk else { break };
+        file.write_all(&chunk)
+            .map_err(|e| format!("could not write the download: {e}"))?;
+        downloaded += chunk.len() as u64;
+        if downloaded > MAX_DOWNLOAD_BYTES {
+            return Err("that download is too large".to_string());
+        }
+        if let Some(total) = total.filter(|t| *t > 0) {
+            #[allow(clippy::cast_precision_loss)]
+            let p = (downloaded as f64 / total as f64).clamp(0.0, 1.0);
+            on_progress(p);
+        }
+    }
+    Ok(())
+}
+
+/// Download a direct media link to `download_dir()/source.<ext>`. Reuses the
+/// download dir so app-close cleanup already covers it; emits
+/// "download-progress"; removes the partial file on failure or cancel.
+async fn download_direct(
+    app: &AppHandle,
+    url: &str,
+    ext: &str,
+    referer: Option<&str>,
+    cancel: &AtomicBool,
+) -> Result<String, String> {
+    let dir = fresh_download_dir()?;
+    let out = dir.join(format!("source.{ext}"));
+    match fetch_to_file(url, referer, &out, cancel, |p| {
+        let _ = app.emit("download-progress", p);
+    })
+    .await
+    {
+        Ok(()) => Ok(out.to_string_lossy().into_owned()),
+        Err(e) => {
+            let _ = std::fs::remove_dir_all(&dir);
+            Err(e)
+        }
+    }
+}
+
+/// Download a video from a URL and return its local path, at source quality.
+/// Direct links to a video file are fetched over plain HTTP; everything else
+/// goes through the bundled `yt-dlp` sidecar (best video + best audio); if
+/// yt-dlp has no extractor for the page, a fallback scrapes the page and its
+/// embedded players (see `scrape_fallback`). Emits "download-progress" events
+/// (0.0-1.0). The resulting file is treated as an ordinary local source and
+/// deleted on exit.
+///
+/// # Errors
+/// Returns a user-facing message if the download can't start, fails, or
+/// produces no file.
+#[tauri::command]
+pub async fn download_video(
+    app: AppHandle,
+    cancel: State<'_, DownloadCancel>,
+    url: String,
+) -> Result<String, String> {
+    let flag = cancel.0.clone();
+    flag.store(false, Ordering::SeqCst);
+
+    // Only http/https. Blocks file:// and, crucially, `--flag`-shaped strings
+    // that yt-dlp would otherwise parse as options rather than a URL.
+    if !is_http_url(&url) {
+        return Err("Only http and https links are supported.".to_string());
+    }
+
+    // Direct file links skip yt-dlp entirely: a plain streaming GET is faster and
+    // works even for hosts yt-dlp has no extractor for.
+    if let Some(ext) = direct_media_extension(&url) {
+        return download_direct(&app, &url, &ext, None, &flag).await;
+    }
+
+    let dir = fresh_download_dir()?;
+    let template = dir.join("source.%(ext)s").to_string_lossy().into_owned();
+    let args = ytdlp_args(&template, ytdlp_ffmpeg_location().as_deref(), None, &url);
+    match run_ytdlp(&app, args, &dir, &flag).await {
+        Ok(path) => Ok(path),
+        Err(YtdlpError::Cancelled) => Err(DOWNLOAD_CANCELLED.to_string()),
+        // No extractor for this page: fall back to scraping the HTML (and its
+        // embedded players) before giving up.
+        Err(YtdlpError::Failed(e)) if ytdlp_unsupported(&e) => {
+            scrape_fallback(&app, &url, &flag).await
+        }
+        Err(YtdlpError::Failed(e)) => Err(friendly_ytdlp_error(&e)),
     }
 }
 
@@ -889,8 +1370,9 @@ fn ffmpeg_path() -> io::Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_ytdlp_args, direct_media_extension, friendly_ytdlp_error, is_http_url, is_newer,
-        parse_version,
+        direct_media_extension, friendly_ytdlp_error, is_http_url, is_newer, origin_of,
+        parse_ffmpeg_duration, parse_progress_time, parse_version, stream_args, ytdlp_args,
+        ytdlp_unsupported, StreamInputs,
     };
 
     #[test]
@@ -939,8 +1421,8 @@ mod tests {
     fn ytdlp_url_is_last_and_after_end_of_options() {
         // A URL that looks like a dangerous flag must survive as a plain operand.
         let evil = "--exec=calc.exe";
-        let args = build_ytdlp_args("out.%(ext)s", None, evil);
-        assert_eq!(args.last().unwrap(), evil);
+        let args = ytdlp_args("out.%(ext)s", None, None, evil);
+        assert_eq!(args.last().expect("args are never empty"), evil);
         let sep = args.len() - 2;
         assert_eq!(args[sep], "--", "URL must be preceded by an -- separator");
         // The evil string must never appear as its own argument before the guard.
@@ -949,14 +1431,10 @@ mod tests {
 
     #[test]
     fn ytdlp_ffmpeg_location_included_when_present() {
-        let args = build_ytdlp_args(
-            "out.%(ext)s",
-            Some(std::path::Path::new("/bin")),
-            "https://x/y",
-        );
+        let args = ytdlp_args("out.%(ext)s", Some("/bin"), None, "https://x/y");
         assert!(args.iter().any(|a| a == "--ffmpeg-location"));
         // Even with the extra flags, the URL stays last behind the separator.
-        assert_eq!(args.last().unwrap(), "https://x/y");
+        assert_eq!(args.last().expect("args are never empty"), "https://x/y");
         assert_eq!(args[args.len() - 2], "--");
     }
 
@@ -1007,5 +1485,104 @@ mod tests {
     fn falls_back_to_last_stderr_line() {
         let msg = friendly_ytdlp_error("some noise\n\nERROR: the thing exploded\n");
         assert_eq!(msg, "Download failed: ERROR: the thing exploded");
+    }
+
+    #[test]
+    fn ytdlp_unsupported_detects_fallback_cases() {
+        assert!(ytdlp_unsupported(
+            "ERROR: Unsupported URL: https://x.example/p"
+        ));
+        assert!(ytdlp_unsupported(
+            "ERROR: [generic] p: No video formats found!; please report this issue"
+        ));
+        assert!(!ytdlp_unsupported(
+            "ERROR: Unable to download webpage: HTTP Error 404"
+        ));
+        assert!(!ytdlp_unsupported(""));
+    }
+
+    #[test]
+    fn parses_ffmpeg_duration_header() {
+        let s = "Input #0, hls, from 'https://x/i.m3u8':\n  Duration: 00:01:30.50, start: 0.000, bitrate: 0 kb/s";
+        assert_eq!(parse_ffmpeg_duration(s), Some(90.5));
+        assert_eq!(parse_ffmpeg_duration("  Duration: N/A, start: 0.0"), None);
+        assert_eq!(parse_ffmpeg_duration("frame=1 time=00:00:01.00"), None);
+    }
+    #[test]
+    fn ytdlp_args_request_source_quality_safely() {
+        let a = ytdlp_args(
+            "/tmp/source.%(ext)s",
+            Some("/bin"),
+            Some("https://page.example/a"),
+            "https://v.example/e/1",
+        );
+        let s = a.join(" ");
+        assert!(s.contains("-f bv*[acodec=none]+ba/b/bv*+ba"));
+        assert!(s.contains("-S res,fps,br"));
+        assert!(s.contains("--merge-output-format mp4/mkv"));
+        assert!(!s.contains("height<="));
+        assert!(s.contains("--ignore-config"));
+        assert!(s.contains("--referer https://page.example/a"));
+        // The URL is always last, after the end-of-options separator.
+        assert_eq!(&a[a.len() - 2..], ["--", "https://v.example/e/1"]);
+        // A non-http referer is never passed through.
+        let b = ytdlp_args("t", None, Some("--exec=x"), "https://v.example/");
+        assert!(!b.iter().any(|x| x.contains("exec")));
+    }
+
+    #[test]
+    fn stream_args_map_variant_audio_and_headers() {
+        let split = StreamInputs {
+            inputs: vec![
+                "https://c.example/v1080.m3u8".into(),
+                "https://c.example/a.m3u8".into(),
+            ],
+            pinned: true,
+        };
+        let a = stream_args(&split, Some("https://page.example/w/1"), "out.mp4", None);
+        let s = a.join(" ");
+        assert_eq!(a.iter().filter(|x| *x == "-i").count(), 2);
+        assert_eq!(a.iter().filter(|x| *x == "-protocol_whitelist").count(), 2);
+        assert!(s.contains("http,https,tcp,tls,crypto"));
+        assert!(s.contains("-referer https://page.example/w/1"));
+        assert!(s.contains("Origin: https://page.example\r\n"));
+        assert!(s.contains("-map 0:v:0 -map 1:a:0 -c copy"));
+        assert!(!s.contains("-t "));
+        assert_eq!(a.last().map(String::as_str), Some("out.mp4"));
+
+        let whole = StreamInputs {
+            inputs: vec!["https://c.example/m.mpd".into()],
+            pinned: false,
+        };
+        let b = stream_args(&whole, None, "o.mp4", Some(10.0)).join(" ");
+        // No -map: ffmpeg's default picks the highest-resolution video + best audio.
+        assert!(!b.contains("-map"));
+        assert!(!b.contains("-referer"));
+        assert!(b.contains("-c copy -t 10"));
+
+        let pinned = StreamInputs {
+            inputs: vec!["https://c.example/v.m3u8".into()],
+            pinned: true,
+        };
+        assert!(stream_args(&pinned, None, "o.mp4", None)
+            .join(" ")
+            .contains("-map 0:v:0 -map 0:a:0?"));
+    }
+
+    #[test]
+    fn origin_of_strips_path() {
+        assert_eq!(
+            origin_of("https://a.example:8443/x/y?z").as_deref(),
+            Some("https://a.example:8443")
+        );
+        assert_eq!(origin_of("not a url"), None);
+    }
+
+    #[test]
+    fn parses_ffmpeg_progress_time() {
+        let line = "frame=  120 fps= 30 size=  256kB time=00:01:04.50 bitrate=...";
+        assert_eq!(parse_progress_time(line), Some(64.5));
+        assert_eq!(parse_progress_time("time=N/A"), None);
+        assert_eq!(parse_progress_time("no timestamp"), None);
     }
 }

@@ -35,4 +35,5 @@ reqwest = { version = "0.13", default-features = false, features = ["native-tls"
 # select!/sleep to race a download against a cancel flag so a stalled URL fetch
 # can be aborted promptly. tokio is already in the tree via tauri.
 tokio = { version = "1", features = ["time", "macros"] }
-
+# URL-import scrape fallback: pull video/HLS/DASH links out of page HTML.
+regex = "1"
