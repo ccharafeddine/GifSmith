@@ -153,8 +153,10 @@ pub fn export_gif(
                 break;
             }
             let pixels: Vec<RGBA8> = buf
-                .chunks_exact(4)
-                .map(|c| RGBA8::new(c[0], c[1], c[2], c[3]))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|&[r, g, b, a]| RGBA8::new(r, g, b, a))
                 .collect();
             frames.push(ImgVec::new(pixels, out_w as usize, out_h as usize));
 
@@ -197,8 +199,10 @@ pub fn export_gif(
                 break; // clean EOF (0) or a partial trailing frame
             }
             let pixels: Vec<RGBA8> = buf
-                .chunks_exact(4)
-                .map(|c| RGBA8::new(c[0], c[1], c[2], c[3]))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|&[r, g, b, a]| RGBA8::new(r, g, b, a))
                 .collect();
             let img = ImgVec::new(pixels, out_w as usize, out_h as usize);
             let pts = idx as f64 / f64::from(params.fps);
