@@ -1,0 +1,29 @@
+/* Smith v2 shell, shared by the standalone apps (see MediaSmith
+   docs/design-system.md and docs/mockups/v2). Loaded after App.css. */
+body { font-size: var(--t-md); line-height: var(--lh); font-family: var(--font-text); }
+button, input, select, textarea { font-family: inherit; }
+.smith-grow { flex: 1; }
+.smith-vsep { width: 1px; height: 20px; background: var(--line-2); }
+.smith-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.smith-steps { display: flex; gap: var(--sp-2); font-size: var(--t-sm); color: var(--text-3); }
+.smith-steps .on { color: var(--app-hue); font-weight: var(--w-bold); }
+.sm-topbar.app-header { display: flex; grid-template-columns: none; margin: 0; flex: none; }
+.sm-wordmark { user-select: none; white-space: nowrap; flex: none; }
+
+/* Empty state: one calm card in the middle of the window. */
+.smith-drop { width: min(560px, 92vw); padding: var(--sp-10) var(--sp-8) var(--sp-8); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); text-align: center; box-shadow: var(--elev-2); }
+.smith-drop .sm-empty__art { margin-bottom: var(--sp-2); font-weight: 800; }
+.smith-drop-title { margin: 0; font: 800 var(--t-2xl)/var(--lh-tight) var(--font-brand); color: var(--text-1); }
+.smith-drop-sub { margin: 0; color: var(--text-2); max-width: 40ch; }
+.smith-drop-formats { margin: 0; font-size: var(--t-xs); color: var(--text-3); letter-spacing: 0.04em; }
+.smith-or { width: 100%; display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); color: var(--text-3); font-size: var(--t-xs); }
+.smith-or::before, .smith-or::after { content: ""; flex: 1; height: 1px; background: var(--line-1); }
+.smith-drop .url-row { width: 100%; display: flex; gap: var(--sp-2); }
+.smith-drop .url-input { flex: 1; height: 36px; padding: 0 var(--sp-3); background: var(--surface-0); border: 1px solid var(--line-2); border-radius: var(--rad-sm); color: var(--text-1); font-size: var(--t-md); }
+.smith-drop .url-input:focus { outline: none; border-color: var(--app-hue); }
+
+/* GifSmith specifics */
+.container { max-width: none; padding: 0; gap: 0; }
+.editor-single { padding: var(--sp-4); max-width: 1280px; margin: 0 auto; width: 100%; }
+.empty-state { align-items: center; padding: var(--sp-6); background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--app-hue) 7%, var(--surface-0)), var(--surface-0) 65%); }
+.smith-drop.drag-over { border-color: var(--app-hue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-hue) 30%, transparent), var(--elev-2); }

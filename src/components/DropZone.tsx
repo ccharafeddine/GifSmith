@@ -17,7 +17,7 @@ function hasAllowedExtension(path: string): boolean {
  * Source loader: open via the native dialog, a window file drop, or a URL
  * (downloaded with yt-dlp). Probes the result and stores path + metadata.
  */
-export default function DropZone() {
+export default function DropZone(props: { compact?: boolean } = {}) {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [dragOver, setDragOver] = createSignal(false);
@@ -117,23 +117,36 @@ export default function DropZone() {
 
   const busy = () => loading() || downloading();
 
-  return (
-    <div class="loader" classList={{ "drag-over": dragOver() }}>
-      <button type="button" onClick={pick} disabled={busy()}>
-        {loading() ? "Reading..." : "Open video"}
+  if (props.compact) {
+    return (
+      <button type="button" class="sm-btn sm-btn--sm" onClick={pick} disabled={busy()}>
+        {loading() ? "Reading…" : "Open video…"}
       </button>
+    );
+  }
+  return (
+    <div class="loader sm-panel smith-drop" classList={{ "drag-over": dragOver() }}>
+      <div class="sm-empty__art" aria-hidden="true">GIF</div>
+      <h3 class="smith-drop-title">Turn a video into a GIF</h3>
+      <p class="smith-drop-sub">Pick a moment, crop it and export a looping or boomerang GIF. Local files never leave this computer.</p>
+      <button type="button" class="sm-btn sm-btn--primary sm-btn--lg" onClick={pick} disabled={busy()}>
+        {loading() ? "Reading…" : "Open video…"}
+      </button>
+      <p class="smith-drop-formats">{VIDEO_EXTENSIONS.map((e) => e.toUpperCase()).join(" · ")} · or drop a file anywhere</p>
 
+      <div class="smith-or"><span>or paste a link · optional, needs internet</span></div>
       <form class="url-row" onSubmit={loadFromUrl}>
         <input
           type="text"
           class="url-input"
-          placeholder="or paste a video URL (YouTube, etc.)"
+          placeholder="https://…"
+          aria-label="Video link"
           value={url()}
           onInput={(e) => setUrl(e.currentTarget.value)}
           disabled={busy()}
         />
-        <button type="submit" disabled={busy() || !url().trim()}>
-          {downloading() ? "Downloading..." : "Load"}
+        <button class="sm-btn" type="submit" disabled={busy() || !url().trim()}>
+          {downloading() ? "Downloading…" : "Fetch"}
         </button>
       </form>
 

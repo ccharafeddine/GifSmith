@@ -5,7 +5,7 @@ import ExportPanel from "./components/ExportPanel";
 import PreviewModal from "./components/PreviewModal";
 import Gallery from "./components/Gallery";
 import SettingsPanel from "./components/SettingsPanel";
-import Logo from "./components/Logo";
+import Wordmark from "./smith/Wordmark";
 import {
   filePath,
   meta,
@@ -27,6 +27,7 @@ import {
 import { discardPreview } from "./ipc";
 import { formatTimecode } from "./format";
 import "./App.css";
+import "./smith/shell.css";
 
 function basename(p: string): string {
   const parts = p.split(/[\\/]/);
@@ -108,9 +109,16 @@ function App() {
 
   return (
     <main class="container">
-      <header class="app-header">
-        <div class="header-spacer" />
-        <Logo />
+      <header class="app-header sm-topbar">
+        <Wordmark />
+        <Show when={meta()}>
+          <span class="smith-vsep" />
+          <DropZone compact />
+        </Show>
+        <span class="smith-grow" />
+        <span class="sm-chip" title="Opening, trimming and exporting local files never needs the internet">
+          <i class="smith-dot" /> Works offline
+        </span>
         <div class="header-actions">
           <button
             type="button"
@@ -167,13 +175,12 @@ function App() {
           </div>
         </div>
       </header>
-      <DropZone />
 
       <Show
         when={meta()}
         fallback={
           <div class="empty-state">
-            Open a video, drop one in, or paste a link to start.
+            <DropZone />
           </div>
         }
       >

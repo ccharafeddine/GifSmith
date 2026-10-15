@@ -1,0 +1,64 @@
+/* Smith components v2. Uses only tokens; prefix sm- so v1 ms- classes are untouched. */
+.sm-app { font: var(--w-reg) var(--t-md)/var(--lh) var(--font-text); color: var(--text-1); background: var(--surface-0); -webkit-font-smoothing: antialiased; }
+.sm-app :focus-visible { outline: none; box-shadow: var(--ring); }
+
+.sm-topbar { height: var(--topbar-h); display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-4); background: var(--surface-1); border-bottom: 1px solid var(--line-1); }
+.sm-wordmark { display: inline-flex; align-items: center; gap: var(--sp-2); font: 700 var(--t-xl)/1 var(--font-brand); letter-spacing: -0.01em; }
+.sm-wordmark img { width: 26px; height: 26px; }
+.sm-wordmark .wm-app { color: var(--app-hue); } .sm-wordmark .wm-smith { color: var(--text-1); }
+
+.sm-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); height: 32px; padding: 0 var(--sp-3);
+  font: var(--w-med) var(--t-md)/1 var(--font-text); color: var(--text-1); background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: var(--rad-sm); cursor: pointer; transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out), border-color var(--dur-1); }
+.sm-btn:hover { background: var(--surface-3); }
+.sm-btn:active { transform: translateY(1px); }
+.sm-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.sm-btn--primary { background: var(--brand-grad); border-color: transparent; color: #fff; box-shadow: 0 4px 18px rgb(138 77 255 / 0.35); }
+.sm-btn--primary:hover { filter: brightness(1.08); background: var(--brand-grad); }
+.sm-btn--ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.sm-btn--ghost:hover { color: var(--text-1); background: var(--surface-2); }
+.sm-btn--danger { color: var(--err); }
+.sm-btn--sm { height: 26px; padding: 0 var(--sp-2); font-size: var(--t-sm); }
+.sm-btn--lg { height: 40px; padding: 0 var(--sp-5); font-size: var(--t-lg); border-radius: var(--rad-md); }
+.sm-btn--icon { width: 32px; padding: 0; }
+
+.sm-seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-0); border: 1px solid var(--line-1); border-radius: var(--rad-sm); }
+.sm-seg button { height: 26px; padding: 0 var(--sp-3); border: 0; border-radius: var(--rad-xs); background: transparent; color: var(--text-2); font: var(--w-med) var(--t-sm)/1 var(--font-text); cursor: pointer; transition: background var(--dur-1), color var(--dur-1); }
+.sm-seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text-1); box-shadow: var(--elev-1); }
+
+.sm-chip { display: inline-flex; align-items: center; gap: var(--sp-1); height: 24px; padding: 0 var(--sp-2); border-radius: var(--rad-full); background: var(--surface-2); color: var(--text-2); font: var(--w-med) var(--t-xs)/1 var(--font-text); }
+.sm-chip--hue { background: var(--app-hue-soft); color: var(--app-hue); }
+
+.sm-panel { background: var(--surface-1); border: 1px solid var(--line-1); border-radius: var(--rad-lg); }
+.sm-panel__head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); font: var(--w-bold) var(--t-xs)/1 var(--font-text); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.sm-card { background: var(--surface-2); border: 1px solid var(--line-1); border-radius: var(--rad-md); transition: border-color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out); }
+.sm-card:hover { border-color: var(--line-2); transform: translateY(-2px); }
+
+.sm-field { display: grid; gap: var(--sp-1); }
+.sm-field > span { font-size: var(--t-xs); color: var(--text-3); }
+.sm-input { height: 32px; padding: 0 var(--sp-3); background: var(--surface-0); color: var(--text-1); border: 1px solid var(--line-2); border-radius: var(--rad-sm); font: var(--t-md) var(--font-text); }
+.sm-field .sm-input { width: 100%; min-width: 0; box-sizing: border-box; }
+.sm-input:focus { border-color: var(--brand); outline: none; }
+.sm-range { accent-color: var(--brand); width: 100%; }
+
+.sm-kbd { display: inline-block; min-width: 18px; padding: 1px 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: var(--rad-xs); font: var(--t-xs)/1.4 var(--font-text); color: var(--text-2); text-align: center; }
+.sm-num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.sm-empty { display: grid; justify-items: center; gap: var(--sp-3); padding: var(--sp-10) var(--sp-6); text-align: center; color: var(--text-2); }
+.sm-empty__art { width: 72px; height: 72px; border-radius: var(--rad-xl); display: grid; place-items: center; background: var(--app-hue-soft); color: var(--app-hue); font-size: 30px; }
+.sm-empty h3 { font: 700 var(--t-xl)/var(--lh-tight) var(--font-brand); color: var(--text-1); }
+
+.sm-drop { border: 1.5px dashed var(--line-2); border-radius: var(--rad-lg); transition: border-color var(--dur-2), background var(--dur-2); }
+.sm-drop[data-over="true"] { border-color: var(--app-hue); background: var(--app-hue-soft); }
+
+.sm-progress { height: 6px; border-radius: var(--rad-full); background: var(--surface-3); overflow: hidden; }
+.sm-progress > i { display: block; height: 100%; background: var(--brand-grad); border-radius: inherit; transition: width var(--dur-3) var(--ease-out); }
+
+.sm-toast { display: flex; gap: var(--sp-3); align-items: center; padding: var(--sp-3) var(--sp-4); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--rad-md); box-shadow: var(--elev-2); animation: sm-rise var(--dur-3) var(--ease-out); }
+.sm-toast--ok { border-left: 3px solid var(--ok); } .sm-toast--err { border-left: 3px solid var(--err); }
+
+.sm-dialog { background: var(--surface-1); border: 1px solid var(--line-2); border-radius: var(--rad-xl); box-shadow: var(--elev-3); animation: sm-pop var(--dur-3) var(--ease-out); }
+.sm-backdrop { position: fixed; inset: 0; background: rgb(5 5 8 / 0.6); backdrop-filter: blur(4px); }
+
+@keyframes sm-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sm-pop { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }

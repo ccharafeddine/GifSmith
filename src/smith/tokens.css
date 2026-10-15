@@ -1,0 +1,108 @@
+/* Smith design system v2, ported from MediaSmith packages/ui (docs/design-system.md).
+   Imported after the app's own tokens.css: v1 names now resolve to v2 values,
+   and the app hue (gifsmith) drives trim handles and active states. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("./inter-latin-wght.woff2") format("woff2"); }
+
+/* ===================== Smith design system v2 =====================
+   Additive layer: every v1 name above still resolves, so existing screens
+   keep working while they migrate. See docs/design-system.md. */
+:root {
+  /* Surfaces: a cool near-black ramp (slight violet cast, not pure gray). */
+  --surface-0: #09090c;   /* window */
+  --surface-1: #111117;   /* panels */
+  --surface-2: #18181f;   /* raised controls, cards */
+  --surface-3: #22222b;   /* hover / pressed */
+  --line-1: #23232c;      /* hairlines */
+  --line-2: #33333f;      /* strong borders, focus rings base */
+  --text-1: #f1f0f5; --text-2: #a4a3b0; --text-3: #6b6a78;
+
+  /* Brand: violet frame + cyan spark, shared by every app. */
+  --brand: #a974ff; --brand-strong: #8a4dff; --brand-soft: rgb(169 116 255 / 0.14);
+  --spark: #45f2f2;
+  --brand-grad: linear-gradient(135deg, #c6acff 0%, #a974ff 50%, #7a3dff 100%);
+
+  /* Per-app hue (set data-app on <html>). Drives the glyph, active states
+     inside the canvas area and the app wordmark half. */
+  --app-hue: var(--brand); --app-hue-soft: var(--brand-soft); --app-hue-fg: #0b0a10;
+
+  /* Semantic */
+  --ok: #4ade80; --warn: #ffb547; --err: #ff5d5d; --info: #45f2f2;
+
+  /* Type: Syne is display-only (wordmarks, big titles). UI text is Inter,
+     numbers use tabular figures. */
+  --font-brand: "Syne", "Segoe UI", system-ui, sans-serif;
+  --font-text: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-num: "Inter", "Segoe UI", system-ui, sans-serif;
+  --t-xs: 11px; --t-sm: 12px; --t-md: 13px; --t-lg: 15px; --t-xl: 18px; --t-2xl: 24px; --t-3xl: 32px;
+  --lh-tight: 1.2; --lh: 1.45;
+  --w-reg: 450; --w-med: 550; --w-bold: 650;
+
+  /* Space: 4px grid */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  /* Radius */
+  --rad-xs: 4px; --rad-sm: 6px; --rad-md: 10px; --rad-lg: 14px; --rad-xl: 20px; --rad-full: 999px;
+  /* Elevation */
+  --elev-1: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-2: 0 8px 24px rgb(0 0 0 / 0.45);
+  --elev-3: 0 24px 64px rgb(0 0 0 / 0.6);
+  --ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--brand);
+
+  /* Motion: short, eased, never bouncy on chrome. */
+  --dur-1: 90ms; --dur-2: 160ms; --dur-3: 260ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+
+  /* Layout */
+  --topbar-h: 52px; --rail-w: 72px; --panel-w: 300px; --inspector-w: 300px; --timeline-h: 240px;
+}
+:root[data-app="mediasmith"]   { --app-hue: #a974ff; --app-hue-soft: rgb(169 116 255 / 0.14); }
+:root[data-app="clipsmith"]    { --app-hue: #45f2f2; --app-hue-soft: rgb(69 242 242 / 0.12); }
+:root[data-app="gifsmith"]     { --app-hue: #ffb547; --app-hue-soft: rgb(255 181 71 / 0.13); }
+:root[data-app="captionsmith"] { --app-hue: #ff5fa2; --app-hue-soft: rgb(255 95 162 / 0.13); }
+
+/* Light theme: opt-in, same names. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --surface-0: #f6f6f8; --surface-1: #ffffff; --surface-2: #f0eff4; --surface-3: #e6e5ec;
+  --line-1: #e3e2ea; --line-2: #cfcdd9;
+  --text-1: #15141b; --text-2: #55536a; --text-3: #8a8899;
+  --brand: #7a3dff; --brand-strong: #6428e6; --brand-soft: rgb(122 61 255 / 0.1); --spark: #0a9c9c;
+  --elev-1: 0 1px 2px rgb(20 10 40 / 0.08); --elev-2: 0 8px 24px rgb(20 10 40 / 0.12); --elev-3: 0 24px 64px rgb(20 10 40 / 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; }
+}
+
+/* Follow the OS theme until the app sets data-theme explicitly. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+  color-scheme: light;
+  --surface-0: #f6f6f8; --surface-1: #ffffff; --surface-2: #f0eff4; --surface-3: #e6e5ec;
+  --line-1: #e3e2ea; --line-2: #cfcdd9;
+  --text-1: #15141b; --text-2: #55536a; --text-3: #8a8899;
+  --brand: #7a3dff; --brand-strong: #6428e6; --brand-soft: rgb(122 61 255 / 0.1); --spark: #0a9c9c;
+  --elev-1: 0 1px 2px rgb(20 10 40 / 0.08); --elev-2: 0 8px 24px rgb(20 10 40 / 0.12); --elev-3: 0 24px 64px rgb(20 10 40 / 0.18);
+  }
+}
+
+/* v1 names (used throughout App.css) mapped onto v2. */
+:root, :root[data-theme] {
+  --bg-base: var(--surface-0);
+  --bg-panel: var(--surface-1);
+  --bg-control: var(--surface-2);
+  --fg: var(--text-1);
+  --fg-2: var(--text-2);
+  --fg-3: var(--text-3);
+  --border: var(--line-1);
+  --accent: var(--brand);
+  --accent-fg: #ffffff;
+  --accent-2: var(--spark);
+  --grad: var(--brand-grad);
+  --trim: var(--app-hue);
+  --danger: var(--err);
+  --r-control: var(--rad-sm);
+  --r-panel: var(--rad-lg);
+  --font-display: var(--font-brand);
+  --font-body: var(--font-text);
+  --font-mono: var(--font-num);
+}
