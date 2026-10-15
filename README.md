@@ -157,6 +157,24 @@ public domain, as noted above.
 
 ## Release notes
 
+### v1.1.0
+
+The v2 design release. GifSmith now matches the rest of the Smith suite. Grab the
+installers from the [v1.1.0 release](https://github.com/ccharafeddine/GifSmith/releases/tag/v1.1.0).
+
+- **New look:** the Smith v2 design system with the Inter font and a new logo
+  and icons. The top bar has a "Works offline" chip and a compact Open button
+  once a video is loaded.
+- **Clearer start screen:** "Open video…" comes first, and link import is
+  labelled optional, since local files never need the internet.
+- **Shrink to fit:** export can re-encode until the GIF is under a size limit
+  (for example Discord's 10 MB).
+- **Link import from any site:** the yt-dlp import gains the ClipSmith
+  scrape fallback for sites yt-dlp doesn't support.
+- **More tests:** vitest frontend tests and broader Rust coverage, all run in CI.
+- **Try it in a browser:** a web demo (crop, loop or boomerang GIF with ffmpeg.wasm)
+  lives in the MediaSmith repo under `apps/smiths-web`.
+
 ### v1.0.1
 
 - **Settings + update check.** A gearwheel in the header opens a settings popover
