@@ -1,6 +1,7 @@
 import { createSignal, For, Show } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import { exportPreview, cancelExport } from "../ipc";
+import { fitStep, MAX_FIT_PASSES } from "../fit";
 import {
   filePath,
   meta,
@@ -64,6 +65,9 @@ export default function ExportPanel() {
   const [error, setError] = createSignal<string | null>(null);
   const [activePreset, setActivePreset] = createSignal<string | null>(null);
   const [limitMb, setLimitMb] = createSignal<number | null>(null);
+  // Re-encode with smaller settings when the result is over the size limit.
+  const [autoFit, setAutoFit] = createSignal(true);
+  const [fitNote, setFitNote] = createSignal<string | null>(null);
   // Set just before requesting cancellation so the resulting error is swallowed.
   let userCancelled = false;
 
@@ -194,20 +198,41 @@ export default function ExportPanel() {
     const unlisten = await listen<number>("export-progress", (e) =>
       setProgress(e.payload),
     );
+    setFitNote(null);
     try {
-      const res = await exportPreview({
-        inputPath: input,
-        startSecs: inPoint(),
-        endSecs: outPoint(),
-        fps: fps(),
-        width: width(),
-        quality: quality(),
-        srcWidth: m.width,
-        srcHeight: m.height,
-        crop: cropPayload(),
-        speed: speed(),
-        boomerang: boomerang(),
-      });
+      const run = () =>
+        exportPreview({
+          inputPath: input,
+          startSecs: inPoint(),
+          endSecs: outPoint(),
+          fps: fps(),
+          width: width(),
+          quality: quality(),
+          srcWidth: m.width,
+          srcHeight: m.height,
+          crop: cropPayload(),
+          speed: speed(),
+          boomerang: boomerang(),
+        });
+      let res = await run();
+      const limit = limitMb();
+      if (autoFit() && limit != null) {
+        for (let pass = 1; pass <= MAX_FIT_PASSES; pass++) {
+          const next = fitStep({ width: width(), fps: fps(), quality: quality() }, res.bytes, limit * MB);
+          if (!next) break;
+          setWidth(next.width);
+          setFps(next.fps);
+          setQuality(next.quality);
+          setFitNote(`Over ${limit} MB, re-encoding smaller (pass ${pass + 1})...`);
+          setProgress(0);
+          res = await run();
+        }
+        setFitNote(
+          res.bytes > limit * MB
+            ? `Still over ${limit} MB at the smallest settings. Shorten the clip or crop it.`
+            : null,
+        );
+      }
       setPreviewVersion((v) => v + 1);
       setPreviewBytes(res.bytes);
       setPreviewPath(res.path);
@@ -384,6 +409,14 @@ export default function ExportPanel() {
           </Show>
         </Show>
       </p>
+
+      <Show when={limitMb()}>
+        <label class="fit-toggle">
+          <input type="checkbox" checked={autoFit()} onChange={(e) => setAutoFit(e.currentTarget.checked)} />
+          Shrink to fit the limit
+        </label>
+      </Show>
+      <Show when={fitNote()}>{(n) => <p class="export-metrics caution">{n()}</p>}</Show>
 
       <button
         type="button"

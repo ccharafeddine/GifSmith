@@ -1173,3 +1173,7 @@ input[type="range"]:focus {
   opacity: 0.6;
   cursor: default;
 }
+
+/* Shrink-to-fit toggle under the export metrics. */
+.fit-toggle { display: flex; gap: 6px; align-items: center; font-size: 12px; margin: 4px 0; }
+
