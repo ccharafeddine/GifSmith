@@ -14,3 +14,13 @@ SMITH_SITE=gif npm run build -w @mediasmith/smiths-web
 ```
 
 then copy `apps/smiths-web/dist-site/gif/` here. See `docs/hosting.md` in MediaSmith for details.
+
+## Building for another domain
+
+The only domain in the build is in the canonical, `og:url`, `og:image` and `twitter:image` tags of `index.html` and `404.html`. They default to https://gif.chafic.me/. To build for another domain, set `SMITH_SITE_URL` to its public URL (absolute `http(s)`; it must still be the root of the domain):
+
+```
+SMITH_SITE=gif SMITH_SITE_URL=https://gifs.example.com npm run build -w @mediasmith/smiths-web
+```
+
+See "Building for another domain" in MediaSmith `docs/hosting.md`.
