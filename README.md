@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="src/assets/gifsmith-icon.svg" width="128" alt="GifSmith" />
+  <img src="docs/brand/gifsmith.svg" width="128" alt="GifSmith logo" />
 </p>
 
 <h1 align="center">GifSmith</h1>
 
-<p align="center">Turn a slice of video into a high-quality animated GIF.</p>
+<p align="center">Turn a slice of video into a high-quality GIF. Fully offline.</p>
 
 <p align="center">
   <a href="https://github.com/ccharafeddine/GifSmith/releases"><img src="https://img.shields.io/github/v/release/ccharafeddine/GifSmith?label=release&color=8b5cf6" alt="Latest release" /></a>
@@ -27,7 +27,31 @@ Built with [Tauri](https://v2.tauri.app), [SolidJS](https://www.solidjs.com), an
 the [gifski](https://github.com/ImageOptim/gifski) encoder, with a bundled LGPL
 build of [FFmpeg](https://ffmpeg.org) for decoding.
 
-<!-- Screenshots (light + dark) go here. -->
+<p align="center">
+  <img src="docs/screenshots/desktop-empty.png" width="90%" alt="GifSmith start screen in the v2 design" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-app.png" width="90%" alt="The packaged GifSmith debug build on Windows" />
+</p>
+
+## Works offline
+
+Every feature has a local path. You never need an internet connection or an account.
+
+- Opening, cropping, encoding (gifski) and the gallery are all local.
+- Link import is optional and is the only feature that uses the network.
+- Fonts (Inter, Syne) and icons ship inside the app. Nothing loads from a CDN.
+
+## Web demo
+
+A browser version lives in the [MediaSmith repo](https://github.com/ccharafeddine/media-smith) (branch `design/v2-impl` until it is merged) under
+`apps/smiths-web` (page `gif.html`). It runs on ffmpeg.wasm with local files only: no
+server and no uploads. In the browser you can open or drop a local file, pick a start and a length (up to 15 s), crop, choose width and frame rate, then export a loop or boomerang palette GIF. Only the desktop app has
+gifski quality, frame-accurate trim handles, shrink-to-fit size targets, gallery, link import. See MediaSmith `docs/web.md` for the build and hosting notes.
+
+<p align="center">
+  <img src="docs/screenshots/web-demo.png" width="90%" alt="GifSmith web demo" />
+</p>
 
 ## Features
 
