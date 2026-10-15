@@ -1,0 +1,8 @@
+{
+  "name": "GifSmith",
+  "repo": "https://github.com/ccharafeddine/GifSmith",
+  "url": "https://gif.chafic.me/",
+  "title": "GifSmith: turn video into a GIF in your browser",
+  "description": "Pick a moment, crop it and export a looping or boomerang GIF, entirely in your browser. Nothing is uploaded.",
+  "fonts": false
+}

@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en" data-app="gifsmith">
+<html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/gifsmith.svg" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/assets/gifsmith-icon-C_Pfr5UV.svg" />
     <title>GifSmith: turn video into a GIF in your browser</title>
-    <script type="module" crossorigin src="/assets/gif-BUrCiYrL.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/gif-D54NwVY6.css">
+    <script type="module" crossorigin src="/assets/index-CSMVO9ns.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D_BtjS-y.css">
       <meta name="description" content="Pick a moment, crop it and export a looping or boomerang GIF, entirely in your browser. Nothing is uploaded." />
     <link rel="canonical" href="https://gif.chafic.me/" />
     <meta name="theme-color" content="#0b0b0f" />
@@ -20,43 +20,10 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://gif.chafic.me/og.png" />
   </head>
-  <body class="sm-app">
-    <main class="page">
-      <section class="stage">
-        <label class="sm-drop drop-card" id="drop">
-          <input type="file" id="file" accept="video/*,.mkv" hidden />
-          <span class="sm-empty__art" aria-hidden="true">GIF</span>
-          <h3>Turn a video into a GIF</h3>
-          <p>Pick a moment, crop it and export a loop or boomerang. The file never leaves this device.</p>
-          <span class="sm-btn sm-btn--primary sm-btn--lg">Open video…</span>
-          <small>MP4 · MOV · WEBM · MKV, up to 500 MB · or drop it anywhere</small>
-          <button type="button" class="sm-btn sm-btn--ghost sm-btn--sm" id="sample">Try the sample clip</button>
-        </label>
-        <div class="player" id="player" hidden>
-          <video id="video" controls playsinline></video>
-        </div>
-        <p class="meta sm-num" id="meta" hidden></p>
-      </section>
-      <aside class="panel sm-panel" id="panel" hidden>
-        <div class="sm-panel__head">Moment</div>
-        <div class="grid2">
-          <label class="sm-field"><span>Start (s)</span><input class="sm-input sm-num" id="start" type="number" min="0" step="0.1" value="0" /></label>
-          <label class="sm-field"><span>Length (s, max 15)</span><input class="sm-input sm-num" id="dur" type="number" min="0.5" max="15" step="0.5" value="3" /></label>
-          <button type="button" class="sm-btn sm-btn--sm span2" id="setIn">Start at playhead</button>
-        </div>
-        <div class="sm-panel__head">Crop</div>
-        <div class="sm-seg" id="ratio" role="group"><button type="button" data-v="0" aria-pressed="true">Original</button><button type="button" data-v="1" aria-pressed="false">Square</button><button type="button" data-v="0.5625" aria-pressed="false">9:16</button><button type="button" data-v="1.7778" aria-pressed="false">16:9</button></div>
-        <div class="sm-panel__head">Size &amp; speed</div>
-        <div class="grid2">
-          <label class="sm-field"><span>Width</span><select class="sm-input" id="width"><option>320</option><option selected>480</option><option>640</option></select></label>
-          <label class="sm-field"><span>Frame rate</span><select class="sm-input" id="fps"><option>10</option><option selected>15</option><option>24</option></select></label>
-        </div>
-        <div class="sm-panel__head">Loop</div>
-        <div class="sm-seg" id="loop" role="group"><button type="button" data-v="loop" aria-pressed="true">Loop</button><button type="button" data-v="boomerang" aria-pressed="false">Boomerang</button></div>
-        <button type="button" class="sm-btn sm-btn--primary sm-btn--lg go" id="go">Make GIF</button>
-        <div class="status" id="status" hidden><span class="st-text"></span><div class="sm-progress" hidden><i></i></div></div>
-        <div class="result" id="result" hidden></div>
-      </aside>
-    </main>
+
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+
   </body>
 </html>
