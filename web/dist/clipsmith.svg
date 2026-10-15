@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<!-- clipsmith mark, Smith family v2: dark tile, violet frame with trim notches, app-hue glyph. Original artwork. -->
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1a26"/><stop offset="1" stop-color="#0a0a0c"/></linearGradient>
+<radialGradient id="glow" cx=".5" cy=".46" r=".5"><stop offset="0" stop-color="#45f2f2" stop-opacity=".28"/><stop offset="1" stop-color="#45f2f2" stop-opacity="0"/></radialGradient>
+<linearGradient id="frame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6acff"/><stop offset=".5" stop-color="#a974ff"/><stop offset="1" stop-color="#7a3dff"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<rect width="512" height="512" rx="112" fill="url(#glow)"/>
+<rect x="6" y="6" width="500" height="500" rx="106" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="4"/>
+<rect x="120" y="140" width="272" height="232" rx="36" fill="none" stroke="url(#frame)" stroke-width="22"/>
+<path d="M120 226 v60 M392 226 v60" stroke="#0b0a10" stroke-width="10" stroke-linecap="round"/>
+<rect x="186" y="226" width="140" height="60" rx="10" fill="#45f2f2" opacity=".22"/><path d="M206 206 h-20 v100 h20" fill="none" stroke="#45f2f2" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/><path d="M306 206 h20 v100 h-20" fill="none" stroke="#45f2f2" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/><rect x="236" y="236" width="40" height="40" rx="8" fill="#45f2f2"/>
+<circle cx="392" cy="140" r="18" fill="#45f2f2"/>
+</svg>

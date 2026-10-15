@@ -5,3 +5,5 @@ tauri-dev.log
 # Exported GIFs land here when saving into ~/Documents/GifSmith (this clone).
 # User content, never commit.
 Exports/
+# Standalone web build for gif.chafic.me (see web/README.md)
+!web/dist/

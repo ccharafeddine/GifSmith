@@ -206,3 +206,7 @@ The first stable release.
   argument injection into the downloader.
 - Fixes: trim-handle edge cases on very short clips, and stale-preview races when
   switching sources quickly.
+
+## Web demo
+
+A standalone static build for https://gif.chafic.me/ is in [`web/dist/`](web/dist). See [`web/README.md`](web/README.md) for the required headers and how to rebuild it.
