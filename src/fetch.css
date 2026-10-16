@@ -1,0 +1,17 @@
+/* Link downloads (desktop) */
+.smith-fetch { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.smith-fetch-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.smith-fetch-info, .smith-fetch-hits { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.smith-fetch-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smith-fetch-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.smith-fetch-live, .smith-fetch-hit, .smith-sites li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.smith-fetch-hit-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85em; }
+.smith-fetch-hint, .smith-fetch-status { font-size: 0.85em; opacity: 0.8; margin: 0; }
+.smith-fetch-legal { font-size: 0.75em; opacity: 0.6; margin: 4px 0 0; }
+.smith-sites { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.smith-toast { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 6px; font-size: 0.85em; }
+.smith-fetch .chip, .smith-dl-settings .chip { padding: var(--s1) var(--s2); font-size: var(--fs-num); white-space: nowrap; border-radius: var(--r-control, 6px); background: var(--bg-control); }
+.dl-progress-row { display: flex; align-items: center; gap: var(--s3); width: 100%; }
+.dl-progress { flex: 1; height: 6px; border-radius: 999px; background: var(--bg-control); overflow: hidden; }
+.dl-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.15s linear; }
+.dl-progress-pct { font-family: var(--font-mono); font-size: var(--fs-num); color: var(--fg-2); min-width: 3.5ch; text-align: right; }

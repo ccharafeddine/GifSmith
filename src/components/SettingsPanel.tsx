@@ -3,6 +3,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { setSettingsOpen } from "../state";
+import DownloadsSettings from "./DownloadsSettings";
+import "../fetch.css";
 import {
   updateStatus,
   updateInfo,
@@ -98,6 +100,7 @@ export default function SettingsPanel() {
         />
         Check for updates on startup
       </label>
+      <DownloadsSettings />
       </Show>
     </div>
   );

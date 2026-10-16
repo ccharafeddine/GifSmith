@@ -1,8 +1,9 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { listen } from "@tauri-apps/api/event";
-import { downloadVideo, cancelDownload } from "../ipc";
+import { isTauri } from "@tauri-apps/api/core";
+import LinkImport from "./LinkImport";
+import "../fetch.css";
 import { loadSource } from "../source";
 
 // Extensions GifSmith accepts (file dialog filter + drag-and-drop allowlist).
@@ -21,11 +22,6 @@ export default function DropZone(props: { compact?: boolean } = {}) {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [dragOver, setDragOver] = createSignal(false);
-  const [url, setUrl] = createSignal("");
-  const [downloading, setDownloading] = createSignal(false);
-  const [dlProgress, setDlProgress] = createSignal(0);
-  // Set just before requesting cancellation so the resulting error is swallowed.
-  let userCancelledDownload = false;
 
   // Probe a path and store it. Shared by every load path.
   async function load(path: string) {
@@ -57,41 +53,6 @@ export default function DropZone(props: { compact?: boolean } = {}) {
     await load(selected);
   }
 
-  async function loadFromUrl(e: Event) {
-    e.preventDefault();
-    const link = url().trim();
-    if (!link || downloading()) return;
-
-    setError(null);
-    setDlProgress(0);
-    setDownloading(true);
-    userCancelledDownload = false;
-    const unlisten = await listen<number>("download-progress", (ev) =>
-      setDlProgress(ev.payload),
-    );
-    try {
-      const path = await downloadVideo(link);
-      await load(path);
-      setUrl("");
-    } catch (err) {
-      // A user-requested cancel surfaces as the cancelled error; ignore it.
-      if (!userCancelledDownload) setError(String(err));
-    } finally {
-      unlisten();
-      setDownloading(false);
-      userCancelledDownload = false;
-    }
-  }
-
-  async function abortDownload() {
-    userCancelledDownload = true;
-    try {
-      await cancelDownload();
-    } catch {
-      // loadFromUrl's finally block clears the downloading state.
-    }
-  }
-
   onMount(() => {
     const unlistenPromise = getCurrentWebview().onDragDropEvent((event) => {
       const p = event.payload;
@@ -115,7 +76,7 @@ export default function DropZone(props: { compact?: boolean } = {}) {
     });
   });
 
-  const busy = () => loading() || downloading();
+  const busy = () => loading();
 
   if (props.compact) {
     return (
@@ -134,35 +95,10 @@ export default function DropZone(props: { compact?: boolean } = {}) {
       </button>
       <p class="smith-drop-formats">{VIDEO_EXTENSIONS.map((e) => e.toUpperCase()).join(" · ")} · or drop a file anywhere</p>
 
-      <div class="smith-or"><span>or paste a link · optional, needs internet</span></div>
-      <form class="url-row" onSubmit={loadFromUrl}>
-        <input
-          type="text"
-          class="url-input"
-          placeholder="https://…"
-          aria-label="Video link"
-          value={url()}
-          onInput={(e) => setUrl(e.currentTarget.value)}
-          disabled={busy()}
-        />
-        <button class="sm-btn" type="submit" disabled={busy() || !url().trim()}>
-          {downloading() ? "Downloading…" : "Fetch"}
-        </button>
-      </form>
-
-      <Show when={downloading()}>
-        <div class="progress-row loader-progress">
-          <div
-            class="progress"
-            style={{ "--p": `${Math.round(dlProgress() * 100)}%` }}
-          >
-            <div class="progress-fill" />
-          </div>
-          <span class="progress-pct">{Math.round(dlProgress() * 100)}%</span>
-          <button type="button" class="cancel" onClick={abortDownload}>
-            Cancel
-          </button>
-        </div>
+      {/* Link downloads are desktop-only; the web demo only opens local files. */}
+      <Show when={isTauri()}>
+        <div class="smith-or"><span>or paste a link · optional, needs internet</span></div>
+        <LinkImport disabled={loading()} onFile={(path) => load(path)} />
       </Show>
       <Show when={error()}>
         <p class="error">{error()}</p>
