@@ -649,5 +649,4 @@ mod tests {
         // Trailing zeros don't make it newer.
         assert!(!is_newer("1.0", "1.0.0"));
     }
-
 }
