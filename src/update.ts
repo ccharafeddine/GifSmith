@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { isTauri } from "@tauri-apps/api/core";
 import { checkForUpdate, type UpdateInfo } from "./ipc";
 
 // Update-check state, shared between the settings panel (manual "Check for
@@ -42,6 +43,8 @@ export function setCheckOnStartup(on: boolean): void {
  * surface it. Returns the resolved status for the startup path.
  */
 export async function runUpdateCheck(): Promise<UpdateStatus> {
+  // Updates are a desktop concern: the web demo is always the latest build.
+  if (!isTauri()) return "idle";
   setUpdateStatus("checking");
   setUpdateError(null);
   try {

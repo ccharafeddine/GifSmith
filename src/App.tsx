@@ -1,4 +1,5 @@
 import { Show, onMount, onCleanup } from "solid-js";
+import { isTauri } from "@tauri-apps/api/core";
 import DropZone from "./components/DropZone";
 import VideoPlayer from "./components/VideoPlayer";
 import ExportPanel from "./components/ExportPanel";
@@ -49,7 +50,7 @@ function App() {
   onMount(() => {
     // Opt-in silent update check: run on mount, only surface UI if a newer
     // release exists (open the settings popover so the user sees it).
-    if (checkOnStartupEnabled()) {
+    if (isTauri() && checkOnStartupEnabled()) {
       void runUpdateCheck().then((status) => {
         if (status === "available") setSettingsOpen(true);
       });

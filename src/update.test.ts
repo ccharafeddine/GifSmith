@@ -3,6 +3,9 @@ import { installMemoryStorage } from "./testUtils";
 
 const checkForUpdate = vi.fn();
 vi.mock("./ipc", () => ({ checkForUpdate: () => checkForUpdate() }));
+// Desktop by default; one test flips this to cover the web demo.
+let tauri = true;
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => tauri }));
 
 const update = await import("./update");
 
@@ -58,5 +61,15 @@ describe("runUpdateCheck", () => {
     checkForUpdate.mockRejectedValue(new Error("boom"));
     expect(await update.runUpdateCheck()).toBe("error");
     expect(update.updateError()).toBe("Update check failed.");
+  });
+});
+
+describe("web demo", () => {
+  it("never checks for updates outside Tauri", async () => {
+    tauri = false;
+    checkForUpdate.mockClear();
+    expect(await update.runUpdateCheck()).toBe("idle");
+    expect(checkForUpdate).not.toHaveBeenCalled();
+    tauri = true;
   });
 });

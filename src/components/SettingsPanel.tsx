@@ -1,4 +1,5 @@
 import { Show, createSignal, onMount, onCleanup } from "solid-js";
+import { isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { setSettingsOpen } from "../state";
@@ -54,6 +55,8 @@ export default function SettingsPanel() {
         GifSmith <span class="settings-version-num">v{version() || "…"}</span>
       </p>
 
+      {/* Updates are desktop-only; the web demo always serves the latest build. */}
+      <Show when={isTauri()}>
       <div class="settings-update">
         <button
           type="button"
@@ -95,6 +98,7 @@ export default function SettingsPanel() {
         />
         Check for updates on startup
       </label>
+      </Show>
     </div>
   );
 }
