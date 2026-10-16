@@ -56,8 +56,12 @@ gifski quality, frame-accurate trim handles, shrink-to-fit size targets, gallery
 ## Features
 
 - Open `mp4`, `mov`, `mkv`, `webm`, `avi`, `m4v` via file picker or drag-and-drop,
-  **or import from a URL** (YouTube and other sites, via a bundled `yt-dlp`;
-  direct links to a video file download straight over HTTP)
+  **or import from a URL** in the desktop app (shared smith-fetch engine: a bundled,
+  self-updating `yt-dlp`, direct files over HTTP, HLS/DASH, a page scraper, a quality
+  picker, opt-in playlists, live recording, a built-in *Browse page…* sniffer, in-app
+  sign-in and cookies.txt import; Settings → Downloads). DRM-protected video is
+  detected and never saved. **Legal:** only download videos you have the right to
+  save (your own, openly licensed, or with permission) and respect each site's terms.
 - A timeline with **filmstrip thumbnails** and iOS-style trim handles, **zoomable**
   down to a 30-second window for precise short clips
 - **Crop** with a draggable, resizable rectangle (tracked in source pixels), with

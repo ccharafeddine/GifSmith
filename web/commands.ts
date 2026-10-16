@@ -205,5 +205,18 @@ export const commands = {
   gallery_thumbnail: galleryThumbnail,
   download_video: downloadVideo,
   cancel_download: cancelDownload,
+  // Desktop-only link downloads (the UI is hidden on the web via isTauri()).
+  fetch_download: downloadVideo,
+  fetch_probe: downloadVideo,
+  fetch_download_hit: downloadVideo,
+  browse_open: downloadVideo,
+  browse_save_signin: downloadVideo,
+  cookies_import: downloadVideo,
+  tools_update_now: downloadVideo,
+  stop_recording: cancelDownload,
+  browse_close: cancelDownload,
+  cookies_forget: cancelDownload,
+  browse_hits: async (): Promise<never[]> => [],
+  cookies_list: async (): Promise<never[]> => [],
   check_for_update: checkForUpdate,
 };

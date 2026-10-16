@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sniff-report"
+description = "Enables the sniff_report command without any pre-configured scope."
+commands.allow = ["sniff_report"]
+
+[[permission]]
+identifier = "deny-sniff-report"
+description = "Denies the sniff_report command without any pre-configured scope."
+commands.deny = ["sniff_report"]
