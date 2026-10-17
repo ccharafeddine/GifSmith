@@ -15,3 +15,10 @@
 .dl-progress { flex: 1; height: 6px; border-radius: 999px; background: var(--bg-control); overflow: hidden; }
 .dl-progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.15s linear; }
 .dl-progress-pct { font-family: var(--font-mono); font-size: var(--fs-num); color: var(--fg-2); min-width: 3.5ch; text-align: right; }
+
+/* Keep Settings inside its panel: a long browser name in the cookies list must
+   not widen the select (and the whole popover) past the panel edge. */
+.smith-dl-settings { min-width: 0; }
+.smith-fetch-field > span { flex: 0 1 auto; min-width: 0; }
+.smith-fetch-field select { flex: 0 1 auto; min-width: 0; max-width: 60%; width: auto; text-overflow: ellipsis; }
+.settings-update-row .smith-fetch-hint { min-width: 0; overflow-wrap: anywhere; }

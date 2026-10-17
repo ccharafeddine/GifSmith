@@ -84,6 +84,8 @@ body {
   z-index: 30; /* above the editor and preview modal (z-index 10) */
   width: 300px;
   max-width: min(300px, calc(100vw - var(--s5)));
+  box-sizing: border-box;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--s3);
