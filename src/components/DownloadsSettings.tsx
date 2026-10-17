@@ -60,7 +60,7 @@ export default function DownloadsSettings() {
 
       <label class="smith-fetch-field" title="Browse page: hide detected videos smaller than this, shorter than 30 s, or from ad servers. Hidden ones stay one click away.">
         <span>Hide videos under</span>
-        <select value={String(settings()?.sniffMinMb ?? 10)} onChange={(e) => void set({ sniffMinMb: Number(e.currentTarget.value) })}>
+        <select value={String(settings()?.sniffMinMb ?? 5)} onChange={(e) => void set({ sniffMinMb: Number(e.currentTarget.value) })}>
           <For each={settings()?.sniffMinMbPresets ?? [0, 5, 10, 25, 50, 100]}>
             {(mb) => <option value={String(mb)}>{minSizeLabel(mb)}</option>}
           </For>

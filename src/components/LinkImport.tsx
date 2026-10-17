@@ -37,7 +37,7 @@ export default function LinkImport(props: {
   // the selection; until they pick, the top item is selected.
   const [picked, setPicked] = createSignal<string | null>(null);
   const [showHidden, setShowHidden] = createSignal(false);
-  const [minMb, setMinMb] = createSignal(10);
+  const [minMb, setMinMb] = createSignal(5);
   const [presets, setPresets] = createSignal([0, 5, 10, 25, 50, 100]);
   let userCancelled = false;
   const unlisten: UnlistenFn[] = [];
