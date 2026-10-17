@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-generate-filmstrip"
+description = "Enables the generate_filmstrip command without any pre-configured scope."
+commands.allow = ["generate_filmstrip"]
+
+[[permission]]
+identifier = "deny-generate-filmstrip"
+description = "Denies the generate_filmstrip command without any pre-configured scope."
+commands.deny = ["generate_filmstrip"]

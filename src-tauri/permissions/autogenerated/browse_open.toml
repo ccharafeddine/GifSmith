@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-browse-open"
+description = "Enables the browse_open command without any pre-configured scope."
+commands.allow = ["browse_open"]
+
+[[permission]]
+identifier = "deny-browse-open"
+description = "Denies the browse_open command without any pre-configured scope."
+commands.deny = ["browse_open"]

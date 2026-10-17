@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-fetch-settings-get"
+description = "Enables the fetch_settings_get command without any pre-configured scope."
+commands.allow = ["fetch_settings_get"]
+
+[[permission]]
+identifier = "deny-fetch-settings-get"
+description = "Denies the fetch_settings_get command without any pre-configured scope."
+commands.deny = ["fetch_settings_get"]

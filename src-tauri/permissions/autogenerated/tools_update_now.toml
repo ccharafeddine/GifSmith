@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-tools-update-now"
+description = "Enables the tools_update_now command without any pre-configured scope."
+commands.allow = ["tools_update_now"]
+
+[[permission]]
+identifier = "deny-tools-update-now"
+description = "Denies the tools_update_now command without any pre-configured scope."
+commands.deny = ["tools_update_now"]

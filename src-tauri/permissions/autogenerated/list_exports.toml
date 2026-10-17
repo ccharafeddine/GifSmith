@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-exports"
+description = "Enables the list_exports command without any pre-configured scope."
+commands.allow = ["list_exports"]
+
+[[permission]]
+identifier = "deny-list-exports"
+description = "Denies the list_exports command without any pre-configured scope."
+commands.deny = ["list_exports"]

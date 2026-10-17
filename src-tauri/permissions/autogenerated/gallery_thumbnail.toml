@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-gallery-thumbnail"
+description = "Enables the gallery_thumbnail command without any pre-configured scope."
+commands.allow = ["gallery_thumbnail"]
+
+[[permission]]
+identifier = "deny-gallery-thumbnail"
+description = "Denies the gallery_thumbnail command without any pre-configured scope."
+commands.deny = ["gallery_thumbnail"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-discard-preview"
+description = "Enables the discard_preview command without any pre-configured scope."
+commands.allow = ["discard_preview"]
+
+[[permission]]
+identifier = "deny-discard-preview"
+description = "Denies the discard_preview command without any pre-configured scope."
+commands.deny = ["discard_preview"]

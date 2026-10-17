@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:app:allow-version",
@@ -13,10 +15,51 @@
     {
       "identifier": "shell:allow-execute",
       "allow": [
-        { "name": "binaries/ffprobe", "sidecar": true, "args": true },
-        { "name": "binaries/ffmpeg", "sidecar": true, "args": true },
-        { "name": "binaries/yt-dlp", "sidecar": true, "args": true }
+        {
+          "name": "binaries/ffprobe",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/yt-dlp",
+          "sidecar": true,
+          "args": true
+        }
       ]
-    }
+    },
+    "allow-probe-video",
+    "allow-generate-filmstrip",
+    "allow-generate-proxy",
+    "allow-download-video",
+    "allow-fetch-download",
+    "allow-fetch-probe",
+    "allow-fetch-download-hit",
+    "allow-cancel-download",
+    "allow-stop-recording",
+    "allow-browse-open",
+    "allow-browse-close",
+    "allow-browse-hits",
+    "allow-browse-save-signin",
+    "allow-cookies-list",
+    "allow-cookies-forget",
+    "allow-cookies-import",
+    "allow-fetch-settings-get",
+    "allow-fetch-settings-set",
+    "allow-tools-status",
+    "allow-tools-update-now",
+    "allow-export-preview",
+    "allow-cancel-export",
+    "allow-default-save-path",
+    "allow-save-preview",
+    "allow-discard-preview",
+    "allow-get-exports-dir",
+    "allow-list-exports",
+    "allow-gallery-thumbnail",
+    "allow-check-for-update"
   ]
 }
