@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Show } from "solid-js";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   cookiesForget, cookiesImport, cookiesList, fetchSettingsGet, fetchSettingsSet,
-  toolsStatus, toolsUpdateNow, LEGAL_NOTE,
+  minSizeLabel, toolsStatus, toolsUpdateNow, LEGAL_NOTE,
 } from "../fetch";
 
 // Settings → Downloads (desktop only; the parent gates it with isTauri()).
@@ -57,6 +57,15 @@ export default function DownloadsSettings() {
           This browser encrypts its cookies on Windows, so reading them usually fails. Use Firefox, a cookies.txt file, or "Sign in to this site…" instead.
         </p>
       </Show>
+
+      <label class="smith-fetch-field" title="Browse page: hide detected videos smaller than this, shorter than 30 s, or from ad servers. Hidden ones stay one click away.">
+        <span>Hide videos under</span>
+        <select value={String(settings()?.sniffMinMb ?? 10)} onChange={(e) => void set({ sniffMinMb: Number(e.currentTarget.value) })}>
+          <For each={settings()?.sniffMinMbPresets ?? [0, 5, 10, 25, 50, 100]}>
+            {(mb) => <option value={String(mb)}>{minSizeLabel(mb)}</option>}
+          </For>
+        </select>
+      </label>
 
       <div class="smith-fetch-field">
         <span>Saved sign-ins</span>
