@@ -3569,7 +3569,7 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 [[package]]
 name = "smith-fetch"
 version = "0.1.0"
-source = "git+https://github.com/ccharafeddine/media-smith?rev=7b543f17548defa2ca0280d1fd979bc413d2b769#7b543f17548defa2ca0280d1fd979bc413d2b769"
+source = "git+https://github.com/ccharafeddine/media-smith?rev=e63ba081dcdece723acc74dcaad842de9d0bba38#e63ba081dcdece723acc74dcaad842de9d0bba38"
 dependencies = [
  "arboard",
  "flate2",
