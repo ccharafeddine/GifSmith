@@ -1,8 +1,9 @@
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   browseClose, browseOpen, browseSaveSignin, cancelFetch, fetchDownload, fetchDownloadHit,
-  fetchProbe, hitLabel, LEGAL_NOTE, SIGNIN_PREFIX, stopRecording, fmtSize,
+  fetchProbe, fetchSettingsGet, fetchSettingsSet, hitFacts, hitName, LEGAL_NOTE, minSizeLabel,
+  SIGNIN_PREFIX, stopRecording, fmtSize,
   type DownloadOptions, type FetchResult, type Hit, type MediaInfo,
 } from "../fetch";
 
@@ -30,6 +31,14 @@ export default function LinkImport(props: {
   const [hits, setHits] = createSignal<Hit[]>([]);
   const [drm, setDrm] = createSignal(false);
   const [clip, setClip] = createSignal("");
+  // Browse list: the backend sends it sorted largest first (estimated size
+  // for streams, then duration) and re-sends on every new hit or size update.
+  // `picked` is the user's own choice, kept by URL so re-sorting never moves
+  // the selection; until they pick, the top item is selected.
+  const [picked, setPicked] = createSignal<string | null>(null);
+  const [showHidden, setShowHidden] = createSignal(false);
+  const [minMb, setMinMb] = createSignal(10);
+  const [presets, setPresets] = createSignal([0, 5, 10, 25, 50, 100]);
   let userCancelled = false;
   const unlisten: UnlistenFn[] = [];
 
@@ -42,6 +51,11 @@ export default function LinkImport(props: {
       await listen("browse-closed", () => { setBrowsing(false); setSigninOpen(false); }),
       await listen<string>("clipboard-link", (e) => setClip(e.payload)),
     );
+    try {
+      const s = await fetchSettingsGet();
+      setMinMb(s.sniffMinMb);
+      if (s.sniffMinMbPresets?.length) setPresets(s.sniffMinMbPresets);
+    } catch { /* defaults */ }
   });
   onCleanup(() => unlisten.forEach((u) => u()));
 
@@ -127,6 +141,8 @@ export default function LinkImport(props: {
     setError("");
     setHits([]);
     setDrm(false);
+    setPicked(null);
+    setShowHidden(false);
     try {
       await browseOpen(link);
       setBrowsing(true);
@@ -162,6 +178,39 @@ export default function LinkImport(props: {
   }
 
   const downloadable = () => hits().filter((h) => h.kind !== "segment");
+  const visible = createMemo(() => downloadable().filter((h) => !h.hidden));
+  const hidden = createMemo(() => downloadable().filter((h) => h.hidden));
+  const selected = createMemo(() => {
+    const all = downloadable();
+    const p = picked();
+    return (p && all.find((h) => h.url === p)) || visible().find((h) => !h.drm) || null;
+  });
+
+  async function changeMinMb(mb: number) {
+    setMinMb(mb);
+    try { await fetchSettingsSet({ sniffMinMb: mb }); } catch (err) { setError(String(err)); }
+  }
+
+  const reasonText = (h: Hit) =>
+    h.hiddenReason === "ad" ? "ad server" : h.hiddenReason === "short" ? "under 30 s" : `under ${minMb()} MB`;
+
+  const hitRow = (h: Hit) => (
+    <label class="smith-fetch-hit" classList={{ "is-selected": selected()?.url === h.url, "is-drm": Boolean(h.drm) }} title={h.url}>
+      <input type="radio" name="smith-hit" checked={selected()?.url === h.url} disabled={Boolean(h.drm)}
+        onChange={() => setPicked(h.url)} />
+      <span class="smith-fetch-hit-text">
+        <span class="smith-fetch-hit-facts">{hitFacts(h)}{h.drm ? " · DRM" : ""}</span>
+        <span class="smith-fetch-hit-name">{hitName(h)}</span>
+      </span>
+      <Show when={h.hidden}><span class="smith-fetch-hit-tag">{reasonText(h)}</span></Show>
+    </label>
+  );
+
+  function downloadSelected() {
+    const h = selected();
+    if (!h || h.drm) return;
+    void run(() => fetchDownloadHit(h, h.live ? { live: true } : undefined), Boolean(h.live));
+  }
 
   return (
     <div class="smith-fetch">
@@ -244,17 +293,40 @@ export default function LinkImport(props: {
           <Show when={drm()}>
             <p class="error">This page uses DRM-protected video, which can't be saved.</p>
           </Show>
-          <For each={downloadable()}>
-            {(h) => (
-              <div class="smith-fetch-hit">
-                <span class="smith-fetch-hit-label" title={h.url}>{hitLabel(h)}</span>
-                <button type="button" class="chip" disabled={busy()}
-                  onClick={() => void run(() => fetchDownloadHit(h, h.live ? { live: true } : undefined), Boolean(h.live))}>
-                  {h.live ? "Record" : "Download"}
-                </button>
-              </div>
-            )}
-          </For>
+          <div class="smith-fetch-field smith-fetch-minsize">
+            <span>Hide videos under</span>
+            <select value={String(minMb())} onChange={(e) => void changeMinMb(Number(e.currentTarget.value))}
+              title="Hides detected videos smaller than this, shorter than 30 s, or from ad servers. Nothing is thrown away.">
+              <For each={presets()}>{(mb) => <option value={String(mb)}>{minSizeLabel(mb)}</option>}</For>
+            </select>
+          </div>
+          <Show when={downloadable().length} fallback={<p class="smith-fetch-hint">Nothing detected yet.</p>}>
+            <div class="smith-fetch-hit-list" role="radiogroup" aria-label="Detected videos, largest first">
+              <For each={visible()}>{(h) => hitRow(h)}</For>
+              <Show when={!visible().length}>
+                <p class="smith-fetch-hint">Everything detected so far looks like an ad or a short clip.</p>
+              </Show>
+            </div>
+            <Show when={hidden().length}>
+              <button type="button" class="smith-fetch-hidden-toggle" aria-expanded={showHidden()}
+                onClick={() => setShowHidden(!showHidden())}>
+                {showHidden() ? "▾" : "▸"} Hidden ({hidden().length}): small or likely ads · {showHidden() ? "hide" : "show all"}
+              </button>
+              <Show when={showHidden()}>
+                <div class="smith-fetch-hit-list is-hidden" role="radiogroup" aria-label="Hidden videos">
+                  <For each={hidden()}>{(h) => hitRow(h)}</For>
+                </div>
+              </Show>
+            </Show>
+            <div class="smith-fetch-hit-actions">
+              <button type="button" class="sm-btn" disabled={busy() || !selected() || Boolean(selected()?.drm)} onClick={downloadSelected}>
+                {selected()?.live ? "Record selected" : "Download selected"}
+              </button>
+              <Show when={selected()}>
+                {(h) => <span class="smith-fetch-hint">{fmtSize(h().size) ? `${h().estimated ? "~" : ""}${fmtSize(h().size)}` : ""}</span>}
+              </Show>
+            </div>
+          </Show>
         </div>
       </Show>
 

@@ -37,4 +37,4 @@ reqwest = { version = "0.13", default-features = false, features = ["native-tls"
 tokio = { version = "1", features = ["time", "macros"] }
 # Shared URL download engine (yt-dlp, scraper, sniff mode, cookies), from the
 # MediaSmith repo so all Smith apps share one implementation.
-smith-fetch = { git = "https://github.com/ccharafeddine/media-smith", rev = "5d784f70c9b2d037cd1da291cf0a6f2f8060c0f2", features = ["tauri"] }
+smith-fetch = { git = "https://github.com/ccharafeddine/media-smith", rev = "7b543f17548defa2ca0280d1fd979bc413d2b769", features = ["tauri"] }

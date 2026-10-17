@@ -22,3 +22,18 @@
 .smith-fetch-field > span { flex: 0 1 auto; min-width: 0; }
 .smith-fetch-field select { flex: 0 1 auto; min-width: 0; max-width: 60%; width: auto; text-overflow: ellipsis; }
 .settings-update-row .smith-fetch-hint { min-width: 0; overflow-wrap: anywhere; }
+/* Browse list: largest first, one selected, hidden ones collapsed. */
+.smith-fetch-minsize select { max-width: 50%; }
+.smith-fetch-hit-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.smith-fetch-hit-list.is-hidden { opacity: 0.8; }
+.smith-fetch-hit { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border, #2a2a2a); border-radius: var(--r-control, 6px); cursor: pointer; min-width: 0; }
+.smith-fetch-hit.is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.smith-fetch-hit.is-drm { opacity: 0.55; cursor: not-allowed; }
+.smith-fetch-hit input { accent-color: var(--accent); flex: none; }
+.smith-fetch-hit-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.smith-fetch-hit-facts { font-size: var(--fs-num, 12px); font-variant-numeric: tabular-nums; }
+.smith-fetch-hit-name { font-size: 11px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.smith-fetch-hit-tag { flex: none; font-size: 11px; color: var(--fg-2); padding: 1px 6px; border-radius: 999px; background: var(--bg-control); }
+.smith-fetch-hidden-toggle { align-self: flex-start; background: none; border: 0; padding: 2px 0; color: var(--fg-2); font-size: var(--fs-num, 12px); cursor: pointer; }
+.smith-fetch-hidden-toggle:hover { color: var(--fg); }
+.smith-fetch-hit-actions { display: flex; align-items: center; gap: 8px; }
